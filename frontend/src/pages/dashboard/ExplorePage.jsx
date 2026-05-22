@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Search, Filter, Users, Github, Linkedin, Globe, Mail } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Search, Users, Github, Linkedin, Mail, ExternalLink } from 'lucide-react'
 import { userAPI, invitationAPI, teamAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import Avatar from '../../components/ui/Avatar'
@@ -124,6 +125,9 @@ export default function ExplorePage() {
                       </a>
                     )}
                     <div className="flex-1" />
+                    <Link to={`/dashboard/profile/${u._id}`}>
+                      <Button size="sm" variant="outline" icon={<ExternalLink size={13} />}>Profile</Button>
+                    </Link>
                     <Button size="sm" variant="secondary" onClick={() => { setSelected(u); setSelectedTeam('') }} icon={<Mail size={13} />}>
                       Invite
                     </Button>

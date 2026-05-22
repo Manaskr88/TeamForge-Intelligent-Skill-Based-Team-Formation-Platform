@@ -90,3 +90,15 @@ export const recommendationAPI = {
 }
 
 export default api
+
+// ── Chat ──────────────────────────────────────────────
+export const chatAPI = {
+  getMessages: (teamId, params) => api.get(`/chat/${teamId}/messages`, { params }),
+  sendMessage: (teamId, data)   => api.post(`/chat/${teamId}/messages`, data),
+  markSeen:    (teamId)         => api.put(`/chat/${teamId}/seen`),
+}
+
+// ── Public profile ────────────────────────────────────
+export const profileAPI = {
+  getPublic: (userId) => api.get(`/users/${userId}`),
+}

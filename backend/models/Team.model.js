@@ -71,11 +71,21 @@ const teamSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Virtual for member count
+// Virtual for member count — guard against undefined when partially populated
 teamSchema.virtual('memberCount').get(function() {
-  return this.members.length;
+  return Array.isArray(this.members) ? this.members.length : 0;
 });
 
-teamSchema.set('toJSON', { virtuals: true });
+// Only apply virtuals when members field is present to avoid crashes on partial selects
+teamSchema.set('toJSON', {
+  virtuals: true,
+  transform: function(doc, ret) {
+    // Safe memberCount — never crash on partial population
+    if (!Array.isArray(ret.members)) {
+      delete ret.memberCount;
+    }
+    return ret;
+  }
+});
 
 module.exports = mongoose.model('Team', teamSchema);

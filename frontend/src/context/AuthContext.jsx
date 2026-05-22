@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { authAPI } from '../services/api'
+import { disconnectSocket } from '../hooks/useSocket'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
@@ -47,6 +48,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(async () => {
     try { await authAPI.logout() } catch {}
+    disconnectSocket()
     localStorage.removeItem('tf_token')
     localStorage.removeItem('tf_user')
     setToken(null)

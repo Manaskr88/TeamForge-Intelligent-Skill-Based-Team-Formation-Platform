@@ -8,31 +8,23 @@ import { useAuth } from '../../context/AuthContext'
 import Avatar from '../ui/Avatar'
 
 const navItems = [
-  { to: '/dashboard',              icon: LayoutDashboard, label: 'Dashboard',       end: true },
-  { to: '/dashboard/explore',      icon: Search,          label: 'Explore' },
-  { to: '/dashboard/teams',        icon: Users,           label: 'Teams' },
-  { to: '/dashboard/projects',     icon: FolderKanban,    label: 'Projects' },
-  { to: '/dashboard/recommendations', icon: Sparkles,     label: 'Recommendations' },
-  { to: '/dashboard/invitations',  icon: Mail,            label: 'Invitations' },
-  { to: '/dashboard/notifications',icon: Bell,            label: 'Notifications' },
-  { to: '/dashboard/profile',      icon: User,            label: 'Profile' },
+  { to: '/dashboard',                 icon: LayoutDashboard, label: 'Dashboard',       end: true },
+  { to: '/dashboard/explore',         icon: Search,          label: 'Explore' },
+  { to: '/dashboard/teams',           icon: Users,           label: 'Teams' },
+  { to: '/dashboard/projects',        icon: FolderKanban,    label: 'Projects' },
+  { to: '/dashboard/recommendations', icon: Sparkles,        label: 'Recommendations' },
+  { to: '/dashboard/invitations',     icon: Mail,            label: 'Invitations' },
+  { to: '/dashboard/notifications',   icon: Bell,            label: 'Notifications' },
+  { to: '/dashboard/profile',         icon: User,            label: 'Profile' },
 ]
 
-export default function Sidebar({ open, onClose }) {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-
-  const handleLogout = async () => {
-    await logout()
-    navigate('/')
-  }
-
-  const SidebarContent = () => (
+function SidebarContent({ onClose, user, handleLogout }) {
+  return (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl gradient-bg flex items-center justify-center">
+          <div className="w-8 h-8 rounded-xl gradient-bg flex items-center justify-center shadow-sm">
             <Zap size={15} className="text-white" fill="white" />
           </div>
           <span className="font-bold text-lg text-slate-900">
@@ -40,7 +32,10 @@ export default function Sidebar({ open, onClose }) {
           </span>
         </div>
         {onClose && (
-          <button onClick={onClose} className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
+          <button
+            onClick={onClose}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 transition-colors"
+          >
             <X size={18} />
           </button>
         )}
@@ -48,7 +43,7 @@ export default function Sidebar({ open, onClose }) {
 
       {/* User card */}
       <div className="px-4 py-4 border-b border-slate-100">
-        <div className="flex items-center gap-3 p-3 bg-primary-50 rounded-xl">
+        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
           <Avatar name={user?.name} src={user?.avatar} size="md" online={true} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-slate-900 truncate">{user?.name}</p>
@@ -58,7 +53,7 @@ export default function Sidebar({ open, onClose }) {
         </div>
       </div>
 
-      {/* Nav */}
+      {/* Nav links */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map(({ to, icon: Icon, label, end }) => (
           <NavLink
@@ -67,16 +62,19 @@ export default function Sidebar({ open, onClose }) {
             end={end}
             onClick={onClose}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group
-              ${isActive
-                ? 'bg-primary-500 text-white shadow-sm'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group ${
+                isActive
+                  ? 'gradient-bg text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`
             }
           >
             {({ isActive }) => (
               <>
-                <Icon size={18} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'} />
+                <Icon
+                  size={18}
+                  className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}
+                />
                 {label}
               </>
             )}
@@ -96,12 +94,22 @@ export default function Sidebar({ open, onClose }) {
       </div>
     </div>
   )
+}
+
+export default function Sidebar({ open, onClose }) {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogout = async () => {
+    await logout()
+    navigate('/')
+  }
 
   return (
     <>
-      {/* Desktop sidebar */}
+      {/* Desktop */}
       <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-slate-100 h-screen sticky top-0 shrink-0">
-        <SidebarContent />
+        <SidebarContent user={user} handleLogout={handleLogout} onClose={null} />
       </aside>
 
       {/* Mobile drawer */}
@@ -122,7 +130,7 @@ export default function Sidebar({ open, onClose }) {
               transition={{ type: 'spring', damping: 25, stiffness: 250 }}
               className="fixed left-0 top-0 bottom-0 w-72 bg-white z-50 lg:hidden shadow-2xl"
             >
-              <SidebarContent />
+              <SidebarContent user={user} handleLogout={handleLogout} onClose={onClose} />
             </motion.aside>
           </>
         )}

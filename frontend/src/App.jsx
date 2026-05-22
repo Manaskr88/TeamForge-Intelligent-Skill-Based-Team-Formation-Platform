@@ -2,21 +2,21 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider, useAuth } from './context/AuthContext'
 
-// Pages
-import LandingPage    from './pages/LandingPage'
-import LoginPage      from './pages/LoginPage'
-import RegisterPage   from './pages/RegisterPage'
-import DashboardLayout from './pages/dashboard/DashboardLayout'
-import DashboardHome  from './pages/dashboard/DashboardHome'
-import ProfilePage    from './pages/dashboard/ProfilePage'
-import TeamsPage      from './pages/dashboard/TeamsPage'
-import TeamDetailPage from './pages/dashboard/TeamDetailPage'
-import ProjectsPage   from './pages/dashboard/ProjectsPage'
+import LandingPage       from './pages/LandingPage'
+import LoginPage         from './pages/LoginPage'
+import RegisterPage      from './pages/RegisterPage'
+import DashboardLayout   from './pages/dashboard/DashboardLayout'
+import DashboardHome     from './pages/dashboard/DashboardHome'
+import ProfilePage       from './pages/dashboard/ProfilePage'
+import UserProfilePage   from './pages/dashboard/UserProfilePage'
+import TeamsPage         from './pages/dashboard/TeamsPage'
+import TeamDetailPage    from './pages/dashboard/TeamDetailPage'
+import ProjectsPage      from './pages/dashboard/ProjectsPage'
 import ProjectDetailPage from './pages/dashboard/ProjectDetailPage'
-import RecommendPage  from './pages/dashboard/RecommendPage'
-import InvitationsPage from './pages/dashboard/InvitationsPage'
+import RecommendPage     from './pages/dashboard/RecommendPage'
+import InvitationsPage   from './pages/dashboard/InvitationsPage'
 import NotificationsPage from './pages/dashboard/NotificationsPage'
-import ExplorePage    from './pages/dashboard/ExplorePage'
+import ExplorePage       from './pages/dashboard/ExplorePage'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth()
@@ -26,7 +26,7 @@ const ProtectedRoute = ({ children }) => {
         <div className="w-12 h-12 rounded-2xl gradient-bg flex items-center justify-center animate-pulse">
           <span className="text-white font-bold text-xl">T</span>
         </div>
-        <div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-slate-800 border-t-transparent rounded-full animate-spin" />
       </div>
     </div>
   )
@@ -42,7 +42,8 @@ const PublicRoute = ({ children }) => {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      {/* future flags silence the React Router v7 warnings */}
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Toaster
           position="top-right"
           toastOptions={{
@@ -56,28 +57,27 @@ export default function App() {
               fontSize: '14px',
               fontWeight: '500',
             },
-            success: { iconTheme: { primary: '#6A5ACD', secondary: '#fff' } },
+            success: { iconTheme: { primary: '#1e293b', secondary: '#fff' } },
             error:   { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
           }}
         />
         <Routes>
-          {/* Public */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/"         element={<LandingPage />} />
           <Route path="/login"    element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
-          {/* Protected dashboard */}
           <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-            <Route index                    element={<DashboardHome />} />
-            <Route path="profile"           element={<ProfilePage />} />
-            <Route path="teams"             element={<TeamsPage />} />
-            <Route path="teams/:id"         element={<TeamDetailPage />} />
-            <Route path="projects"          element={<ProjectsPage />} />
-            <Route path="projects/:id"      element={<ProjectDetailPage />} />
-            <Route path="recommendations"   element={<RecommendPage />} />
-            <Route path="invitations"       element={<InvitationsPage />} />
-            <Route path="notifications"     element={<NotificationsPage />} />
-            <Route path="explore"           element={<ExplorePage />} />
+            <Route index                  element={<DashboardHome />} />
+            <Route path="profile"         element={<ProfilePage />} />
+            <Route path="teams"           element={<TeamsPage />} />
+            <Route path="teams/:id"       element={<TeamDetailPage />} />
+            <Route path="projects"        element={<ProjectsPage />} />
+            <Route path="projects/:id"    element={<ProjectDetailPage />} />
+            <Route path="recommendations" element={<RecommendPage />} />
+            <Route path="invitations"     element={<InvitationsPage />} />
+            <Route path="notifications"   element={<NotificationsPage />} />
+            <Route path="explore"         element={<ExplorePage />} />
+            <Route path="profile/:userId" element={<UserProfilePage />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

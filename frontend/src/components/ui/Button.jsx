@@ -2,11 +2,11 @@ import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 
 const variants = {
-  primary:   'bg-primary-500 hover:bg-primary-600 text-white shadow-sm hover:shadow-md',
-  secondary: 'bg-white hover:bg-slate-50 text-primary-600 border border-primary-200 hover:border-primary-400',
-  ghost:     'text-slate-600 hover:text-primary-600 hover:bg-primary-50',
+  primary:   'gradient-bg text-white shadow-sm hover:opacity-90',
+  secondary: 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 hover:border-slate-500',
+  ghost:     'text-slate-600 hover:text-slate-900 hover:bg-slate-100',
   danger:    'bg-red-500 hover:bg-red-600 text-white shadow-sm',
-  outline:   'border border-slate-200 hover:border-slate-300 text-slate-700 hover:bg-slate-50',
+  outline:   'border border-slate-200 hover:border-slate-400 text-slate-700 hover:bg-slate-50',
 }
 
 const sizes = {

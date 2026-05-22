@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles, Mail, ChevronRight, Info } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Sparkles, Mail, Info, ExternalLink } from 'lucide-react'
 import { recommendationAPI, invitationAPI, teamAPI } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 import Avatar from '../../components/ui/Avatar'
@@ -148,6 +149,11 @@ export default function RecommendPage() {
                 >
                   Invite to Team
                 </Button>
+                <Link to={`/dashboard/profile/${u._id}`} className="w-full">
+                  <Button size="sm" variant="outline" className="w-full" icon={<ExternalLink size={13} />}>
+                    View Profile
+                  </Button>
+                </Link>
               </div>
             </motion.div>
           ))}
