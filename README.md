@@ -1,197 +1,307 @@
-# TeamForge — Intelligent Skill-Based Team Formation Platform
+![MERN](https://img.shields.io/badge/Stack-MERN-blue)
+![MongoDB](https://img.shields.io/badge/Database-MongoDB-green)
+![React](https://img.shields.io/badge/Frontend-React.js-61DAFB)
+![Node](https://img.shields.io/badge/Backend-Node.js-brightgreen)
+![Socket.IO](https://img.shields.io/badge/Realtime-Socket.IO-black)
+![JWT](https://img.shields.io/badge/Auth-JWT-orange)
+![Deployment](https://img.shields.io/badge/Deployed-Vercel%20%26%20Render-purple)
 
-A production-ready full-stack MERN application for building smarter teams using AI-powered skill matching.
+# 🚀 TeamForge – Skill Based Team Formation Platform
 
-## Tech Stack
-
-| Layer      | Technology                                      |
-|------------|-------------------------------------------------|
-| Frontend   | React 18 + Vite, Tailwind CSS, Framer Motion    |
-| Backend    | Node.js, Express.js                             |
-| Database   | MongoDB Atlas + Mongoose                        |
-| Auth       | JWT + bcryptjs                                  |
-| Icons      | Lucide React                                    |
-| Deployment | Frontend → Vercel, Backend → Render             |
-
----
-
-## Project Structure
-
-```
-teamforge/
-├── backend/
-│   ├── controllers/       # Route handlers
-│   ├── middleware/        # Auth + validation
-│   ├── models/            # Mongoose schemas
-│   ├── routes/            # Express routers
-│   ├── uploads/           # Static file storage
-│   ├── server.js          # Entry point
-│   └── .env               # Environment variables
-│
-└── frontend/
-    ├── src/
-    │   ├── components/
-    │   │   ├── layout/    # Navbar, Sidebar
-    │   │   └── ui/        # Button, Input, Modal, Avatar, Badge, Loader
-    │   ├── context/       # AuthContext
-    │   ├── pages/
-    │   │   ├── LandingPage.jsx
-    │   │   ├── LoginPage.jsx
-    │   │   ├── RegisterPage.jsx
-    │   │   └── dashboard/
-    │   │       ├── DashboardLayout.jsx
-    │   │       ├── DashboardHome.jsx
-    │   │       ├── ProfilePage.jsx
-    │   │       ├── TeamsPage.jsx
-    │   │       ├── TeamDetailPage.jsx
-    │   │       ├── ProjectsPage.jsx
-    │   │       ├── ProjectDetailPage.jsx
-    │   │       ├── RecommendPage.jsx
-    │   │       ├── InvitationsPage.jsx
-    │   │       ├── NotificationsPage.jsx
-    │   │       └── ExplorePage.jsx
-    │   ├── services/      # Axios API calls
-    │   └── App.jsx
-    └── .env
-```
+🔗 **Live Demo:** https://teamforge.vercel.app/ 
+🔗 **Backend API:** https://teamforge-api.onrender.com/
+💻 **GitHub Repository:** https://github.com/Manaskr88/teamforge
 
 ---
 
-## Quick Start
+## 📖 Overview
 
-### 1. Clone & Install
+TeamForge is a full-stack MERN application designed to help students, developers, and hackathon participants build balanced and compatible teams efficiently.
+
+The platform uses a smart compatibility matching algorithm that analyzes users based on:
+
+* Skills
+* Experience Level
+* Availability
+
+Unlike traditional team finders, TeamForge prioritizes complementary skills to create stronger and more diverse teams.
+
+The application also includes:
+
+* Real-time team chat
+* Team/project management
+* Invitation workflows
+* Public developer profiles
+* Smart recommendations system
+
+---
+
+## 🚀 Tech Stack
+
+### Frontend
+
+* React.js
+* Vite
+* Tailwind CSS
+* Framer Motion
+
+### Backend
+
+* Node.js
+* Express.js
+* Socket.IO
+
+### Database
+
+* MongoDB Atlas
+* Mongoose
+
+### Authentication
+
+* JWT Authentication
+* bcryptjs
+
+### Deployment
+
+* Vercel (Frontend)
+* Render (Backend)
+
+---
+
+## ✨ Key Features
+
+### 👤 Authentication & User System
+
+* JWT-based authentication
+* Persistent login sessions
+* Multi-step registration workflow
+* Editable public user profiles
+
+### 🤝 Smart Team Matching
+
+* Compatibility scoring system
+* Skill-based recommendations
+* Complementary skill prioritization
+* Match explanation breakdowns
+
+### 👥 Team Management
+
+* Create and manage teams
+* Invite users to teams
+* Browse teams with filters
+* Team member management
+
+### 💬 Real-Time Team Chat
+
+* Private team chat rooms
+* Socket.IO powered messaging
+* Typing indicators
+* Seen receipts
+* Online/offline member tracking
+* Persistent chat history
+
+### 📂 Project Collaboration
+
+* Create and browse projects
+* Apply to join projects
+* View applicants and required skills
+* Hackathon-focused workflows
+
+### 🔔 Notifications System
+
+* Team invitations
+* Application updates
+* Real-time activity notifications
+* Read/unread management
+
+### 🌐 Explore Developers
+
+* Search developers
+* Filter by skills and experience
+* Public developer profiles
+* Invite directly from profiles
+
+---
+
+## 🧠 Compatibility Algorithm
+
+The smart recommendation engine calculates compatibility using:
+
+* Skills → 50%
+* Experience → 30%
+* Availability → 20%
+
+The platform rewards complementary skills more than identical ones to encourage balanced team formation.
+
+Example:
+
+* Frontend Developer + Backend Developer → Higher Match
+* Two identical frontend developers → Lower Match
+
+---
+
+## 🏗 System Architecture
+
+Client (React + Vite Frontend)
+→ REST API (Node.js + Express Backend)
+→ MongoDB Atlas Database
+
+Real-time communication handled using Socket.IO.
+Authentication secured using JWT tokens.
+
+---
+
+## ⚙️ Installation & Setup
+
+### 1️⃣ Clone the repository
 
 ```bash
-# Backend
-cd teamforge/backend
-npm install
+git clone https://github.com/Manaskr88/teamforge
+```
 
-# Frontend
-cd teamforge/frontend
+### 2️⃣ Navigate into project folder
+
+```bash
+cd teamforge
+```
+
+---
+
+## 🔧 Backend Setup
+
+### Navigate to backend
+
+```bash
+cd backend
+```
+
+### Install dependencies
+
+```bash
 npm install
 ```
 
-### 2. Configure Environment
+### Create `.env`
 
-**Backend** — copy `.env.example` to `.env`:
 ```env
+MONGO_URI=your_mongodb_uri
+JWT_SECRET=your_secret_key
 PORT=5000
-MONGODB_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/teamforge
-JWT_SECRET=your_super_secret_key
-JWT_EXPIRE=7d
-NODE_ENV=development
 CLIENT_URL=http://localhost:5173
 ```
 
-**Frontend** — copy `.env.example` to `.env`:
+### Start backend server
+
+```bash
+npm run dev
+```
+
+---
+
+## 🎨 Frontend Setup
+
+### Navigate to frontend
+
+```bash
+cd frontend
+```
+
+### Install dependencies
+
+```bash
+npm install
+```
+
+### Create `.env`
+
 ```env
 VITE_API_URL=http://localhost:5000/api
 ```
 
-### 3. Run Development Servers
+### Start frontend
 
 ```bash
-# Terminal 1 — Backend
-cd backend
-npm run dev
-
-# Terminal 2 — Frontend
-cd frontend
 npm run dev
 ```
 
-Open http://localhost:5173
-
 ---
 
-## API Endpoints
+## 📂 Project Structure
 
-### Auth
-| Method | Route              | Description        |
-|--------|--------------------|--------------------|
-| POST   | /api/auth/register | Register user      |
-| POST   | /api/auth/login    | Login              |
-| GET    | /api/auth/me       | Get current user   |
-| POST   | /api/auth/logout   | Logout             |
-
-### Users
-| Method | Route                | Description         |
-|--------|----------------------|---------------------|
-| GET    | /api/users           | Get all users       |
-| GET    | /api/users/dashboard | Dashboard stats     |
-| GET    | /api/users/:id       | Get user by ID      |
-| PUT    | /api/users/profile   | Update profile      |
-
-### Teams
-| Method | Route                        | Description      |
-|--------|------------------------------|------------------|
-| GET    | /api/teams                   | Get all teams    |
-| POST   | /api/teams                   | Create team      |
-| GET    | /api/teams/my                | My teams         |
-| GET    | /api/teams/:id               | Team detail      |
-| PUT    | /api/teams/:id               | Update team      |
-| DELETE | /api/teams/:id               | Delete team      |
-| POST   | /api/teams/:id/leave         | Leave team       |
-| DELETE | /api/teams/:id/members/:uid  | Remove member    |
-
-### Projects
-| Method | Route                   | Description       |
-|--------|-------------------------|-------------------|
-| GET    | /api/projects           | Get all projects  |
-| POST   | /api/projects           | Create project    |
-| GET    | /api/projects/my        | My projects       |
-| GET    | /api/projects/:id       | Project detail    |
-| PUT    | /api/projects/:id       | Update project    |
-| DELETE | /api/projects/:id       | Delete project    |
-| POST   | /api/projects/:id/apply | Apply to project  |
-
-### Recommendations
-| Method | Route                              | Description          |
-|--------|------------------------------------|----------------------|
-| GET    | /api/recommendations/teammates     | Get recommendations  |
-| GET    | /api/recommendations/compatibility/:id | Compatibility score |
-
----
-
-## Compatibility Score Formula
-
-```
-Score = (Skill Match × 0.5) + (Experience Match × 0.3) + (Availability Match × 0.2)
+```bash
+teamforge/
+│
+├── frontend/
+│   ├── src/
+│   ├── components/
+│   ├── pages/
+│   ├── context/
+│   └── utils/
+│
+├── backend/
+│   ├── controllers/
+│   ├── routes/
+│   ├── models/
+│   ├── middleware/
+│   ├── sockets/
+│   └── config/
 ```
 
-- **Skill Match**: Complementary skills score higher than identical ones
-- **Experience Match**: Peer-level or mentor-mentee pairings
-- **Availability Match**: Schedule overlap for real collaboration
+---
+
+## 🔌 Core API Endpoints
+
+| Method | Endpoint              | Description          |
+| ------ | --------------------- | -------------------- |
+| POST   | /api/auth/register    | Register user        |
+| POST   | /api/auth/login       | Login user           |
+| GET    | /api/users/profile    | Get profile          |
+| PUT    | /api/users/profile    | Update profile       |
+| GET    | /api/recommendations  | Get compatible users |
+| POST   | /api/teams/create     | Create team          |
+| POST   | /api/invitations/send | Send invitation      |
+| GET    | /api/projects         | Get projects         |
 
 ---
 
-## Deployment
+## 📈 Performance & Optimization
 
-### Backend → Render
-
-1. Push backend to GitHub
-2. Create new Web Service on [render.com](https://render.com)
-3. Set environment variables in Render dashboard
-4. Build command: `npm install`
-5. Start command: `npm start`
-
-### Frontend → Vercel
-
-1. Push frontend to GitHub
-2. Import project on [vercel.com](https://vercel.com)
-3. Set `VITE_API_URL` to your Render backend URL
-4. Deploy
+* Optimized recommendation matching logic
+* Real-time Socket.IO event handling
+* Responsive mobile-first UI
+* Efficient MongoDB query structure
+* Persistent authentication sessions
 
 ---
 
-## Features
+## 🔮 Future Enhancements
 
-- JWT authentication with persistent sessions
-- Smart teammate matching with compatibility scoring
-- Team creation, management, and member invitations
-- Project posting with skill requirements
-- Real-time notifications
-- Explore developers with advanced filters
-- Responsive mobile-first design
-- Glassmorphism UI with Framer Motion animations
-- Skeleton loaders and empty states
+* AI-powered teammate recommendations
+* Video/audio team rooms
+* GitHub integration
+* Calendar & scheduling system
+* Hackathon event integration
+* Advanced analytics dashboard
+
+---
+
+## 👨‍💻 Author
+
+**Manas Kumar**
+Full Stack Developer
+
+🔗 GitHub: https://github.com/Manaskr88
+🔗 LeetCode: https://leetcode.com/u/Manaskr88
+
+---
+
+## ⭐ Contributing
+
+Contributions are welcome.
+Fork the repository and submit a pull request for improvements or new features.
+
+---
+
+## 📜 License
+
+This project is licensed under the MIT License.
