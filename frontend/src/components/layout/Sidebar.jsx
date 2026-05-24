@@ -2,10 +2,11 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, FolderKanban, Sparkles,
-  Mail, Bell, Search, User, LogOut, Zap, X, ChevronRight
+  Mail, Bell, Search, User, LogOut, X, ChevronRight
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import Avatar from '../ui/Avatar'
+import LogoIcon from '../ui/LogoIcon'
 
 const navItems = [
   { to: '/dashboard',                 icon: LayoutDashboard, label: 'Dashboard',       end: true },
@@ -24,9 +25,7 @@ function SidebarContent({ onClose, user, handleLogout }) {
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl gradient-bg flex items-center justify-center shadow-sm">
-            <Zap size={15} className="text-white" fill="white" />
-          </div>
+          <LogoIcon size={32} />
           <span className="font-bold text-lg text-slate-900">
             Team<span className="gradient-text">Forge</span>
           </span>

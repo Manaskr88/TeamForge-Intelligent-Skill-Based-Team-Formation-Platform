@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, User, Zap, ArrowRight, Eye, EyeOff, Plus, X } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Plus, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { Select } from '../components/ui/Input'
+import LogoIcon from '../components/ui/LogoIcon'
 import toast from 'react-hot-toast'
 
 const POPULAR_SKILLS = ['React','Node.js','Python','TypeScript','MongoDB','AWS','Docker','Figma','Flutter','Go','Rust','Vue.js']
@@ -64,9 +65,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-lg">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-6">
-            <div className="w-10 h-10 rounded-2xl gradient-bg flex items-center justify-center shadow-sm">
-              <Zap size={18} className="text-white" fill="white" />
-            </div>
+            <LogoIcon size={40} />
             <span className="font-bold text-2xl text-slate-900">Team<span className="gradient-text">Forge</span></span>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
@@ -160,7 +159,7 @@ export default function RegisterPage() {
               </Select>
               <div className="flex gap-3">
                 <Button type="button" variant="outline" size="lg" className="flex-1" onClick={() => setStep(1)}>Back</Button>
-                <Button type="submit" loading={loading} size="lg" className="flex-1" icon={<Zap size={16} />}>Create Account</Button>
+                <Button type="submit" loading={loading} size="lg" className="flex-1" icon={<ArrowRight size={16} />}>Create Account</Button>
               </div>
             </form>
           )}

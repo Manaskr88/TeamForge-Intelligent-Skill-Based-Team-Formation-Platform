@@ -1,0 +1,41 @@
+/**
+ * TeamForge Logo Icon
+ * A modern interlocking "TF" mark — clean, geometric, SaaS-style.
+ * Use <LogoIcon size={32} /> anywhere.
+ */
+export default function LogoIcon({ size = 32, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 32 32"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-label="TeamForge logo"
+    >
+      {/* Outer rounded square background */}
+      <rect width="32" height="32" rx="9" fill="url(#tf-grad)" />
+
+      {/* T — horizontal bar */}
+      <rect x="6" y="8" width="13" height="3" rx="1.5" fill="white" />
+      {/* T — vertical stem */}
+      <rect x="11" y="8" width="3" height="12" rx="1.5" fill="white" />
+
+      {/* F — horizontal top bar */}
+      <rect x="14" y="13" width="12" height="3" rx="1.5" fill="white" opacity="0.85" />
+      {/* F — middle bar */}
+      <rect x="14" y="18" width="8" height="2.5" rx="1.25" fill="white" opacity="0.85" />
+      {/* F — vertical stem */}
+      <rect x="14" y="13" width="3" height="11" rx="1.5" fill="white" opacity="0.85" />
+
+      {/* Gradient definition */}
+      <defs>
+        <linearGradient id="tf-grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#1e293b" />
+          <stop offset="100%" stopColor="#2d4a7a" />
+        </linearGradient>
+      </defs>
+    </svg>
+  )
+}

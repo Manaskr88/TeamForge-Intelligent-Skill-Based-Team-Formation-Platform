@@ -2,13 +2,14 @@ import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useInView } from 'framer-motion'
 import {
-  Zap, Users, Sparkles, Target, ArrowRight, Github, Linkedin,
+  Users, Sparkles, Target, ArrowRight,
   Star, CheckCircle, Code2, Brain, Globe, Shield, Rocket, TrendingUp,
-  ChevronRight, Play, Award, Clock, BarChart3
+  Award, Zap
 } from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
 import Button from '../components/ui/Button'
 import Avatar from '../components/ui/Avatar'
+import LogoIcon from '../components/ui/LogoIcon'
 
 const fadeUp = {
   hidden: { opacity: 0, y: 30 },

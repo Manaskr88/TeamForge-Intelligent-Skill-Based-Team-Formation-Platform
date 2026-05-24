@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Mail, Lock, Zap, ArrowRight, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
+import LogoIcon from '../components/ui/LogoIcon'
 import toast from 'react-hot-toast'
 
 export default function LoginPage() {
@@ -48,9 +49,7 @@ export default function LoginPage() {
           className="text-center mb-8"
         >
           <Link to="/" className="inline-flex items-center gap-2.5 mb-6">
-            <div className="w-10 h-10 rounded-2xl gradient-bg flex items-center justify-center shadow-sm">
-              <Zap size={18} className="text-white" fill="white" />
-            </div>
+            <LogoIcon size={40} />
             <span className="font-bold text-2xl text-slate-900">Team<span className="gradient-text">Forge</span></span>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
