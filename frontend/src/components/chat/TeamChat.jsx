@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Send, MessageSquare, Loader2, Circle } from 'lucide-react'
+import { Send, MessageSquare, Loader2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { chatAPI } from '../../services/api'
 import { getSocket } from '../../hooks/useSocket'

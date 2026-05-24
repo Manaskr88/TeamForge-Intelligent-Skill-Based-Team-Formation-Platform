@@ -38,41 +38,41 @@ export const authAPI = {
 
 // ── Users ─────────────────────────────────────────────
 export const userAPI = {
-  getAll:         (params) => api.get('/users', { params }),
-  getById:        (id)     => api.get(`/users/${id}`),
-  updateProfile:  (data)   => api.put('/users/profile', data),
-  getDashboard:   ()       => api.get('/users/dashboard'),
+  getAll:        (params) => api.get('/users', { params }),
+  getById:       (id)     => api.get(`/users/${id}`),
+  updateProfile: (data)   => api.put('/users/profile', data),
+  getDashboard:  ()       => api.get('/users/dashboard'),
 }
 
 // ── Teams ─────────────────────────────────────────────
 export const teamAPI = {
-  getAll:       (params) => api.get('/teams', { params }),
-  getMy:        ()       => api.get('/teams/my'),
-  getById:      (id)     => api.get(`/teams/${id}`),
-  create:       (data)   => api.post('/teams', data),
-  update:       (id, d)  => api.put(`/teams/${id}`, d),
-  delete:       (id)     => api.delete(`/teams/${id}`),
-  leave:        (id)     => api.post(`/teams/${id}/leave`),
+  getAll:       (params)   => api.get('/teams', { params }),
+  getMy:        ()         => api.get('/teams/my'),
+  getById:      (id)       => api.get(`/teams/${id}`),
+  create:       (data)     => api.post('/teams', data),
+  update:       (id, d)    => api.put(`/teams/${id}`, d),
+  delete:       (id)       => api.delete(`/teams/${id}`),
+  leave:        (id)       => api.post(`/teams/${id}/leave`),
   removeMember: (tid, uid) => api.delete(`/teams/${tid}/members/${uid}`),
 }
 
 // ── Projects ──────────────────────────────────────────
 export const projectAPI = {
-  getAll:   (params) => api.get('/projects', { params }),
-  getMy:    ()       => api.get('/projects/my'),
-  getById:  (id)     => api.get(`/projects/${id}`),
-  create:   (data)   => api.post('/projects', data),
-  update:   (id, d)  => api.put(`/projects/${id}`, d),
-  delete:   (id)     => api.delete(`/projects/${id}`),
-  apply:    (id)     => api.post(`/projects/${id}/apply`),
+  getAll:  (params) => api.get('/projects', { params }),
+  getMy:   ()       => api.get('/projects/my'),
+  getById: (id)     => api.get(`/projects/${id}`),
+  create:  (data)   => api.post('/projects', data),
+  update:  (id, d)  => api.put(`/projects/${id}`, d),
+  delete:  (id)     => api.delete(`/projects/${id}`),
+  apply:   (id)     => api.post(`/projects/${id}/apply`),
 }
 
 // ── Invitations ───────────────────────────────────────
 export const invitationAPI = {
-  getMy:    ()       => api.get('/invitations'),
-  getSent:  ()       => api.get('/invitations/sent'),
-  send:     (data)   => api.post('/invitations', data),
-  respond:  (id, s)  => api.put(`/invitations/${id}`, { status: s }),
+  getMy:   ()      => api.get('/invitations'),
+  getSent: ()      => api.get('/invitations/sent'),
+  send:    (data)  => api.post('/invitations', data),
+  respond: (id, s) => api.put(`/invitations/${id}`, { status: s }),
 }
 
 // ── Notifications ─────────────────────────────────────
@@ -89,8 +89,6 @@ export const recommendationAPI = {
   getCompatibility:(id)     => api.get(`/recommendations/compatibility/${id}`),
 }
 
-export default api
-
 // ── Chat ──────────────────────────────────────────────
 export const chatAPI = {
   getMessages: (teamId, params) => api.get(`/chat/${teamId}/messages`, { params }),
@@ -102,3 +100,5 @@ export const chatAPI = {
 export const profileAPI = {
   getPublic: (userId) => api.get(`/users/${userId}`),
 }
+
+export default api

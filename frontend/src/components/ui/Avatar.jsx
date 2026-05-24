@@ -1,4 +1,4 @@
-// Slate-blue palette — no violet/purple
+// Slate-blue palette — consistent with brand
 const colors = [
   'bg-slate-700',
   'bg-blue-600',
@@ -33,21 +33,28 @@ export default function Avatar({ name = '', src, size = 'md', className = '', on
     '2xl':'w-4 h-4',
   }
 
+  const initials = name?.charAt(0)?.toUpperCase() || '?'
+
   return (
     <div className={`relative inline-flex shrink-0 ${className}`}>
       {src ? (
         <img
           src={src}
-          alt={name}
+          alt={name || 'avatar'}
           className={`${sizes[size]} rounded-full object-cover ring-2 ring-white`}
-          onError={e => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex' }}
+          onError={(e) => {
+            // On broken image, hide img and show fallback div
+            e.currentTarget.style.display = 'none'
+            const sibling = e.currentTarget.nextElementSibling
+            if (sibling) sibling.style.display = 'flex'
+          }}
         />
       ) : null}
+      {/* Fallback initials — always rendered, hidden when src loads */}
       <div
-        className={`${sizes[size]} ${getColor(name)} rounded-full flex items-center justify-center text-white font-bold ring-2 ring-white ${src ? 'hidden' : ''}`}
-        style={src ? { display: 'none' } : {}}
+        className={`${sizes[size]} ${getColor(name)} rounded-full items-center justify-center text-white font-bold ring-2 ring-white ${src ? 'hidden' : 'flex'}`}
       >
-        {name?.charAt(0)?.toUpperCase() || '?'}
+        {initials}
       </div>
       {online !== undefined && (
         <span
