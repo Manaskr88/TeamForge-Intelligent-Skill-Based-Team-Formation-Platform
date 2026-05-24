@@ -9,7 +9,24 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
-      }
-    }
-  }
+      },
+      '/socket.io': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+        ws: true,  // enable WebSocket proxying for Socket.IO
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor:  ['react', 'react-dom', 'react-router-dom'],
+          motion:  ['framer-motion'],
+          socket:  ['socket.io-client'],
+          ui:      ['lucide-react'],
+        },
+      },
+    },
+  },
 })

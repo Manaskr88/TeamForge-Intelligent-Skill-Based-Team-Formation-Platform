@@ -80,7 +80,7 @@ export default function ProfilePage() {
           <div className="relative">
             <Avatar name={user?.name} src={user?.avatar} size="2xl" online={true} />
             {editing && (
-              <button className="absolute -bottom-1 -right-1 w-7 h-7 bg-primary-500 rounded-full flex items-center justify-center text-white shadow-sm hover:bg-primary-600 transition-colors">
+              <button className="absolute -bottom-1 -right-1 w-7 h-7 gradient-bg rounded-full flex items-center justify-center text-white shadow-sm hover:opacity-90 transition-opacity">
                 <Edit3 size={12} />
               </button>
             )}
@@ -157,7 +157,7 @@ export default function ProfilePage() {
               <p className="text-xs text-slate-400 mb-2">Popular skills:</p>
               <div className="flex flex-wrap gap-1.5">
                 {POPULAR_SKILLS.filter(s => !form.skills.includes(s)).slice(0, 10).map(s => (
-                  <button key={s} onClick={() => addSkill(s)} className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full hover:bg-primary-50 hover:text-primary-700 transition-colors">+ {s}</button>
+                  <button key={s} onClick={() => addSkill(s)} className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full hover:bg-slate-200 hover:text-slate-800 transition-colors">+ {s}</button>
                 ))}
               </div>
             </div>
@@ -190,7 +190,7 @@ export default function ProfilePage() {
               { icon: Mail, label: 'Email', val: user?.email },
             ].map(({ icon: Icon, label, val }) => val ? (
               <a key={label} href={val.startsWith('http') ? val : `mailto:${val}`} target="_blank" rel="noreferrer"
-                className="flex items-center gap-3 text-sm text-slate-600 hover:text-primary-600 transition-colors">
+                className="flex items-center gap-3 text-sm text-slate-600 hover:text-slate-900 transition-colors">
                 <Icon size={16} className="text-slate-400" />
                 <span className="truncate">{val}</span>
               </a>

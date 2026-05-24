@@ -106,7 +106,7 @@ const updateTeam = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Only team leader can update team' });
     }
 
-    const updated = await Team.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
+    const updated = await Team.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true, returnDocument: 'after' })
       .populate('leader', 'name avatar')
       .populate('members.user', 'name avatar skills');
 
