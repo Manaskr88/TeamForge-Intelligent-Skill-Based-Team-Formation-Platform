@@ -4,7 +4,7 @@ import { motion, useInView } from 'framer-motion'
 import {
   Users, Sparkles, Target, ArrowRight,
   Star, CheckCircle, Code2, Brain, Globe, Shield, Rocket, TrendingUp,
-  Award, Zap
+  Award
 } from 'lucide-react'
 import Navbar from '../components/layout/Navbar'
 import Button from '../components/ui/Button'
@@ -232,7 +232,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <motion.div variants={fadeUp} className="inline-flex items-center gap-2 px-4 py-2 bg-primary-50 border border-primary-100 rounded-full text-sm font-medium text-primary-700 mb-4">
-              <Zap size={14} /> Everything you need
+              <Sparkles size={14} /> Everything you need
             </motion.div>
             <motion.h2 variants={fadeUp} className="section-title">Built for serious builders</motion.h2>
             <motion.p variants={fadeUp} className="section-subtitle mx-auto">
@@ -436,9 +436,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl gradient-bg flex items-center justify-center">
-                <Zap size={15} className="text-white" fill="white" />
-              </div>
+              <LogoIcon size={32} />
               <span className="font-bold text-lg text-white">Team<span className="text-primary-400">Forge</span></span>
             </div>
             <p className="text-sm text-center">
