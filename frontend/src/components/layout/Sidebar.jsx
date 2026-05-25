@@ -2,7 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, FolderKanban, Sparkles,
-  Mail, Bell, Search, User, LogOut, X, ChevronRight
+  Mail, Bell, Search, User, LogOut, X, ChevronRight,
+  Brain, Lightbulb, BarChart3
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import Avatar from '../ui/Avatar'
@@ -17,6 +18,12 @@ const navItems = [
   { to: '/dashboard/invitations',     icon: Mail,            label: 'Invitations' },
   { to: '/dashboard/notifications',   icon: Bell,            label: 'Notifications' },
   { to: '/dashboard/profile',         icon: User,            label: 'Profile' },
+]
+
+const aiNavItems = [
+  { to: '/dashboard/ai-recommendations', icon: Brain,     label: 'AI Teammates' },
+  { to: '/dashboard/ai-ideas',           icon: Lightbulb, label: 'Idea Generator' },
+  { to: '/dashboard/skill-gap',          icon: BarChart3, label: 'Skill Gap' },
 ]
 
 function SidebarContent({ onClose, user, handleLogout }) {
@@ -70,11 +77,41 @@ function SidebarContent({ onClose, user, handleLogout }) {
           >
             {({ isActive }) => (
               <>
-                <Icon
-                  size={18}
-                  className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'}
-                />
+                <Icon size={18} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'} />
                 {label}
+              </>
+            )}
+          </NavLink>
+        ))}
+
+        {/* AI Features section */}
+        <div className="pt-3 pb-1">
+          <div className="flex items-center gap-2 px-3 mb-1.5">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest shrink-0">AI Features</span>
+            <div className="flex-1 h-px bg-slate-100" />
+          </div>
+        </div>
+        {aiNavItems.map(({ to, icon: Icon, label }) => (
+          <NavLink
+            key={to}
+            to={to}
+            onClick={onClose}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 group ${
+                isActive
+                  ? 'bg-gradient-to-r from-slate-800 to-slate-700 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+              }`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <Icon size={18} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-slate-600'} />
+                {label}
+                {!isActive && (
+                  <span className="ml-auto text-[9px] font-bold bg-gradient-to-r from-slate-700 to-slate-600 text-white px-1.5 py-0.5 rounded-full">AI</span>
+                )}
               </>
             )}
           </NavLink>

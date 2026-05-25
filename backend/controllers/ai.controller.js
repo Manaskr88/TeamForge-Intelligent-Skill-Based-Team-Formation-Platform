@@ -1,0 +1,219 @@
+const aiService   = require('../services/ai.service');
+const User        = require('../models/User.model');
+const Team        = require('../models/Team.model');
+const SavedIdea   = require('../models/SavedIdea.model');
+
+// ── Feature 1: Team Chat AI Assistant ────────────────────────────────────────
+// POST /api/ai/chat
+const chatAssistant = async (req, res) => {
+  try {
+    const { message, teamId } = req.body;
+    if (!message?.trim()) {
+      return res.status(400).json({ success: false, message: 'Message is required' });
+    }
+
+    // Fetch team context if teamId provided
+    let teamName = 'your team';
+    let teamSkills = [];
+    let projectDescription = '';
+
+    if (teamId) {
+      const team = await Team.findById(teamId).select('name requiredSkills description projectType');
+      if (team) {
+        teamName = team.name;
+        teamSkills = team.requiredSkills || [];
+        projectDescription = `${team.description} (${team.projectType?.replace(/-/g, ' ')})`;
+      }
+    }
+
+    const response = await aiService.teamChatAssistant({
+      message: message.trim(),
+      teamName,
+      teamSkills,
+      projectDescription,
+    });
+
+    res.json({ success: true, response });
+  } catch (err) {
+    console.error('AI chat error:', err.message);
+    const msg = err.message || ''
+    res.status(500).json({
+      success: false,
+      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
+        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env with a valid key from console.groq.com'
+        : msg.includes('GROQ_API_KEY')
+        ? 'AI service not configured. Please add GROQ_API_KEY to backend/.env'
+        : 'AI service error. Please try again.',
+    });
+  }
+};
+
+// ── Feature 2: Hackathon Idea Generator ──────────────────────────────────────
+// POST /api/ai/generate-idea
+const generateIdea = async (req, res) => {
+  try {
+    const { domain, techStack, teamSize, difficulty, theme, problemArea } = req.body;
+
+    if (!domain || !techStack) {
+      return res.status(400).json({ success: false, message: 'Domain and tech stack are required' });
+    }
+
+    const idea = await aiService.generateHackathonIdea({
+      domain,
+      techStack: Array.isArray(techStack) ? techStack.join(', ') : techStack,
+      teamSize:  teamSize  || '3-4 people',
+      difficulty: difficulty || 'intermediate',
+      theme:     theme     || 'open',
+      problemArea: problemArea || 'general',
+    });
+
+    res.json({ success: true, idea });
+  } catch (err) {
+    console.error('Idea generator error:', err.message);
+    const msg = err.message || ''
+    res.status(500).json({
+      success: false,
+      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
+        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
+        : 'Failed to generate idea. Please try again.'
+    });
+  }
+};
+
+// POST /api/ai/save-idea
+const saveIdea = async (req, res) => {
+  try {
+    const { idea, domain, theme } = req.body;
+    if (!idea?.projectName) {
+      return res.status(400).json({ success: false, message: 'Invalid idea data' });
+    }
+
+    const saved = await SavedIdea.create({
+      user:             req.user._id,
+      projectName:      idea.projectName,
+      tagline:          idea.tagline || '',
+      domain:           domain || '',
+      theme:            theme  || '',
+      techStack:        idea.techStack || [],
+      coreFeatures:     idea.coreFeatures || [],
+      problemStatement: idea.problemStatement || '',
+      solution:         idea.solution || '',
+      uniqueSellingPoint: idea.uniqueSellingPoint || '',
+      fullData:         idea,
+    });
+
+    res.status(201).json({ success: true, message: 'Idea saved!', saved });
+  } catch (err) {
+    console.error('Save idea error:', err.message);
+    res.status(500).json({ success: false, message: 'Failed to save idea' });
+  }
+};
+
+// GET /api/ai/saved-ideas
+const getSavedIdeas = async (req, res) => {
+  try {
+    const ideas = await SavedIdea.find({ user: req.user._id }).sort({ createdAt: -1 });
+    res.json({ success: true, ideas });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// DELETE /api/ai/saved-ideas/:id
+const deleteSavedIdea = async (req, res) => {
+  try {
+    await SavedIdea.findOneAndDelete({ _id: req.params.id, user: req.user._id });
+    res.json({ success: true, message: 'Idea deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// ── Feature 3: Skill Gap Analyzer ────────────────────────────────────────────
+// POST /api/ai/skill-gap-analysis
+const skillGapAnalysis = async (req, res) => {
+  try {
+    const { targetRole, careerPath, experienceLevel, currentSkills } = req.body;
+
+    if (!targetRole) {
+      return res.status(400).json({ success: false, message: 'Target role is required' });
+    }
+
+    // Use provided skills or fall back to user's profile skills
+    const skills = currentSkills?.length
+      ? currentSkills
+      : req.user.skills || [];
+
+    const analysis = await aiService.analyzeSkillGap({
+      currentSkills:   skills,
+      targetRole,
+      experienceLevel: experienceLevel || req.user.experienceLevel || 'beginner',
+      careerPath:      careerPath || targetRole,
+    });
+
+    res.json({ success: true, analysis });
+  } catch (err) {
+    console.error('Skill gap error:', err.message);
+    const msg = err.message || ''
+    res.status(500).json({
+      success: false,
+      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
+        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
+        : 'Failed to analyze skill gap. Please try again.'
+    });
+  }
+};
+
+// ── Feature 4: AI Team Recommendations ───────────────────────────────────────
+// POST /api/ai/team-recommendations
+const aiTeamRecommendations = async (req, res) => {
+  try {
+    const currentUser = await User.findById(req.user._id).select('-password');
+    const { limit = 10 } = req.query;
+
+    // Fetch candidates (exclude self)
+    const candidates = await User.find({ _id: { $ne: req.user._id } })
+      .select('name skills experienceLevel availability role bio avatar isOnline')
+      .limit(30)
+      .lean();
+
+    if (candidates.length === 0) {
+      return res.json({ success: true, recommendations: [] });
+    }
+
+    const recommendations = await aiService.aiTeamRecommendations({
+      currentUser: {
+        name:            currentUser.name,
+        skills:          currentUser.skills,
+        experienceLevel: currentUser.experienceLevel,
+        availability:    currentUser.availability,
+        role:            currentUser.role,
+      },
+      candidates,
+    });
+
+    res.json({
+      success: true,
+      recommendations: recommendations.slice(0, parseInt(limit)),
+    });
+  } catch (err) {
+    console.error('AI recommendations error:', err.message);
+    const msg = err.message || ''
+    res.status(500).json({
+      success: false,
+      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
+        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
+        : 'Failed to get AI recommendations. Please try again.'
+    });
+  }
+};
+
+module.exports = {
+  chatAssistant,
+  generateIdea,
+  saveIdea,
+  getSavedIdeas,
+  deleteSavedIdea,
+  skillGapAnalysis,
+  aiTeamRecommendations,
+};

@@ -191,6 +191,7 @@ app.use('/api/invitations',     require('./routes/invitation.routes'));
 app.use('/api/notifications',   require('./routes/notification.routes'));
 app.use('/api/recommendations', require('./routes/recommendation.routes'));
 app.use('/api/chat',            require('./routes/chat.routes'));
+app.use('/api/ai',              require('./routes/ai.routes'));
 
 app.get('/api/health', (req, res) =>
   res.json({ status: 'OK', db: dbReady ? 'connected' : 'connecting', timestamp: new Date() })

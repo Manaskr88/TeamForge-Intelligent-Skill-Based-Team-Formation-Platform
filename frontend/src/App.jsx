@@ -17,6 +17,9 @@ import RecommendPage     from './pages/dashboard/RecommendPage'
 import InvitationsPage   from './pages/dashboard/InvitationsPage'
 import NotificationsPage from './pages/dashboard/NotificationsPage'
 import ExplorePage       from './pages/dashboard/ExplorePage'
+import IdeaGenerator     from './pages/dashboard/IdeaGenerator'
+import SkillGapAnalyzer  from './pages/dashboard/SkillGapAnalyzer'
+import AIRecommendations from './pages/dashboard/AIRecommendations'
 
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth()
@@ -78,6 +81,9 @@ export default function App() {
             <Route path="notifications"   element={<NotificationsPage />} />
             <Route path="explore"         element={<ExplorePage />} />
             <Route path="profile/:userId" element={<UserProfilePage />} />
+            <Route path="ai-ideas"        element={<IdeaGenerator />} />
+            <Route path="skill-gap"       element={<SkillGapAnalyzer />} />
+            <Route path="ai-recommendations" element={<AIRecommendations />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />

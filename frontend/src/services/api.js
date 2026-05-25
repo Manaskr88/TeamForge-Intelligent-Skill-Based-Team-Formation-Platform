@@ -102,3 +102,14 @@ export const profileAPI = {
 }
 
 export default api
+
+// ── AI Features ───────────────────────────────────────
+export const aiAPI = {
+  chat:                (data)   => api.post('/ai/chat', data),
+  generateIdea:        (data)   => api.post('/ai/generate-idea', data),
+  saveIdea:            (data)   => api.post('/ai/save-idea', data),
+  getSavedIdeas:       ()       => api.get('/ai/saved-ideas'),
+  deleteSavedIdea:     (id)     => api.delete(`/ai/saved-ideas/${id}`),
+  skillGapAnalysis:    (data)   => api.post('/ai/skill-gap-analysis', data),
+  teamRecommendations: (params) => api.post('/ai/team-recommendations', {}, { params }),
+}
