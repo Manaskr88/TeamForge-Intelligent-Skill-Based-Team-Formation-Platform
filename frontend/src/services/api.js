@@ -5,17 +5,15 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
-  timeout: 15000,
+  timeout: 30000,
 })
 
-// Attach token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('tf_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Handle 401 globally
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -85,8 +83,9 @@ export const notificationAPI = {
 
 // ── Recommendations ───────────────────────────────────
 export const recommendationAPI = {
-  getTeammates:    (params) => api.get('/recommendations/teammates', { params }),
-  getCompatibility:(id)     => api.get(`/recommendations/compatibility/${id}`),
+  getTeammates:    (params)         => api.get('/recommendations/teammates', { params }),
+  getForTeam:      (teamId, params) => api.get(`/recommendations/team/${teamId}`, { params }),
+  getCompatibility:(id)             => api.get(`/recommendations/compatibility/${id}`),
 }
 
 // ── Chat ──────────────────────────────────────────────
@@ -101,8 +100,6 @@ export const profileAPI = {
   getPublic: (userId) => api.get(`/users/${userId}`),
 }
 
-export default api
-
 // ── AI Features ───────────────────────────────────────
 export const aiAPI = {
   chat:                (data)   => api.post('/ai/chat', data),
@@ -112,4 +109,7 @@ export const aiAPI = {
   deleteSavedIdea:     (id)     => api.delete(`/ai/saved-ideas/${id}`),
   skillGapAnalysis:    (data)   => api.post('/ai/skill-gap-analysis', data),
   teamRecommendations: (params) => api.post('/ai/team-recommendations', {}, { params }),
+  teamAnalysis:        (data)   => api.post('/ai/team-analysis', data),
 }
+
+export default api

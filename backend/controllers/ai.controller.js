@@ -208,6 +208,75 @@ const aiTeamRecommendations = async (req, res) => {
   }
 };
 
+// ── Feature 5: AI Team-Mode Recommendations ─────────────────────────────────
+// POST /api/ai/team-analysis
+const aiTeamAnalysis = async (req, res) => {
+  try {
+    const { teamId } = req.body;
+    if (!teamId) return res.status(400).json({ success: false, message: 'teamId is required' });
+
+    const Team = require('../models/Team.model');
+    const team = await Team.findById(teamId)
+      .populate('members.user', 'name skills experienceLevel availability role');
+
+    if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
+
+    const isMember = team.members.some(m => m.user?._id?.toString() === req.user._id.toString());
+    if (!isMember) return res.status(403).json({ success: false, message: 'Not a team member' });
+
+    const memberIds      = team.members.map(m => m.user?._id?.toString()).filter(Boolean);
+    const combinedSkills = [...new Set(team.members.flatMap(m => (m.user?.skills || []).map(s => s.toLowerCase())))];
+    const requiredSkills = (team.requiredSkills || []).map(s => s.toLowerCase());
+    const missingSkills  = requiredSkills.filter(s => !combinedSkills.includes(s));
+
+    // Fetch candidates who have at least one missing skill
+    let candidates = [];
+    if (missingSkills.length > 0) {
+      candidates = await User.find({ _id: { $nin: memberIds }, skills: { $in: missingSkills } })
+        .select('name skills experienceLevel availability role bio avatar isOnline')
+        .limit(25).lean();
+      if (candidates.length < 4) {
+        const extra = await User.find({ _id: { $nin: [...memberIds, ...candidates.map(c => c._id.toString())] } })
+          .select('name skills experienceLevel availability role bio avatar isOnline')
+          .limit(15).lean();
+        candidates = [...candidates, ...extra];
+      }
+    } else {
+      candidates = await User.find({ _id: { $nin: memberIds } })
+        .select('name skills experienceLevel availability role bio avatar isOnline')
+        .limit(25).lean();
+    }
+
+    if (candidates.length === 0) {
+      return res.json({ success: true, recommendations: [], teamInfo: { name: team.name, requiredSkills, missingSkills, combinedSkills } });
+    }
+
+    const recommendations = await aiService.aiTeamModeRecommendations({
+      teamName:            team.name,
+      requiredSkills,
+      missingSkills,
+      combinedMemberSkills: combinedSkills,
+      candidates,
+      projectType:         team.projectType,
+    });
+
+    res.json({
+      success: true,
+      recommendations,
+      teamInfo: { name: team.name, requiredSkills, missingSkills, combinedSkills, memberCount: team.members.length, maxMembers: team.maxMembers },
+    });
+  } catch (err) {
+    console.error('AI team analysis error:', err.message);
+    const msg = err.message || '';
+    res.status(500).json({
+      success: false,
+      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
+        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
+        : 'Failed to get AI team analysis. Please try again.',
+    });
+  }
+};
+
 module.exports = {
   chatAssistant,
   generateIdea,
@@ -216,4 +285,5 @@ module.exports = {
   deleteSavedIdea,
   skillGapAnalysis,
   aiTeamRecommendations,
+  aiTeamAnalysis,
 };

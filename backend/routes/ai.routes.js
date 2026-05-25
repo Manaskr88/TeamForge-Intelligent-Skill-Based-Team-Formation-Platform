@@ -10,6 +10,7 @@ const {
   deleteSavedIdea,
   skillGapAnalysis,
   aiTeamRecommendations,
+  aiTeamAnalysis,
 } = require('../controllers/ai.controller');
 
 // Rate limiter — 20 AI requests per user per minute
@@ -41,7 +42,10 @@ router.delete('/saved-ideas/:id', deleteSavedIdea);
 // Feature 3 — Skill Gap Analyzer
 router.post('/skill-gap-analysis', skillGapAnalysis);
 
-// Feature 4 — AI Team Recommendations
+// Feature 4 — AI Team Recommendations (For Me)
 router.post('/team-recommendations', aiTeamRecommendations);
+
+// Feature 5 — AI Team Analysis (For Team)
+router.post('/team-analysis', aiTeamAnalysis);
 
 module.exports = router;

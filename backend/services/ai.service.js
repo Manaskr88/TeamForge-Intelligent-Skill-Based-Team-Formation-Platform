@@ -207,9 +207,61 @@ Return ONLY this JSON array (one object per candidate, same order):
   }).sort((a, b) => b.compatibility.score - a.compatibility.score);
 }
 
+// ── Feature 5: AI Team-Mode Recommendations ──────────────────────────────────
+async function aiTeamModeRecommendations({ teamName, requiredSkills, missingSkills, combinedMemberSkills, candidates, projectType }) {
+  const system = `You are an expert team formation AI for a developer collaboration platform called TeamForge.
+Your job is to analyze which candidates best COMPLETE a team by filling skill gaps.
+Always respond with ONLY valid JSON — no markdown fences, no extra text.`;
+
+  const top = candidates.slice(0, 8);
+
+  const userMsg = `Analyze which candidates best complete this team's missing skills.
+
+Team: "${teamName}" (${projectType || 'software project'})
+Required Skills: ${requiredSkills.join(', ') || 'not specified'}
+Current Team Skills: ${combinedMemberSkills.join(', ') || 'none'}
+Missing Skills: ${missingSkills.join(', ') || 'none'}
+
+Candidates:
+${top.map((c, i) => `${i + 1}. ${c.name} | Skills: ${c.skills?.join(', ') || 'none'} | Exp: ${c.experienceLevel} | Avail: ${c.availability} | Role: ${c.role}`).join('\n')}
+
+Return ONLY this JSON array (one object per candidate, same order):
+[
+  {
+    "candidateIndex": 0,
+    "compatibilityScore": 88,
+    "skillsFulfilled": ["Express.js", "JavaScript"],
+    "suggestedRole": "Backend Developer",
+    "whyGoodMatch": "string explaining why this person completes the team",
+    "teamImpact": "string describing how they improve team balance",
+    "riskFactors": "string or null"
+  }
+]`;
+
+  const raw = await chat(system, userMsg, 1200);
+  const aiResults = parseJSON(raw);
+
+  return top.map((candidate, i) => {
+    const ai = aiResults.find(r => r.candidateIndex === i) || aiResults[i] || {};
+    return {
+      user: candidate,
+      compatibility: {
+        score:           ai.compatibilityScore || 50,
+        skillsFulfilled: ai.skillsFulfilled    || [],
+        suggestedRole:   ai.suggestedRole      || 'Team Member',
+        whyGoodMatch:    ai.whyGoodMatch       || 'Complements team skills',
+        teamImpact:      ai.teamImpact         || '',
+        riskFactors:     ai.riskFactors        || null,
+        mode:            'team',
+      },
+    };
+  }).sort((a, b) => b.compatibility.score - a.compatibility.score);
+}
+
 module.exports = {
   teamChatAssistant,
   generateHackathonIdea,
   analyzeSkillGap,
   aiTeamRecommendations,
+  aiTeamModeRecommendations,
 };
