@@ -13,7 +13,6 @@ import TeamsPage         from './pages/dashboard/TeamsPage'
 import TeamDetailPage    from './pages/dashboard/TeamDetailPage'
 import ProjectsPage      from './pages/dashboard/ProjectsPage'
 import ProjectDetailPage from './pages/dashboard/ProjectDetailPage'
-import RecommendPage     from './pages/dashboard/RecommendPage'
 import InvitationsPage   from './pages/dashboard/InvitationsPage'
 import NotificationsPage from './pages/dashboard/NotificationsPage'
 import ExplorePage       from './pages/dashboard/ExplorePage'
@@ -45,7 +44,6 @@ const PublicRoute = ({ children }) => {
 export default function App() {
   return (
     <AuthProvider>
-      {/* future flags silence the React Router v7 warnings */}
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Toaster
           position="top-right"
@@ -70,19 +68,18 @@ export default function App() {
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
           <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-            <Route index                  element={<DashboardHome />} />
-            <Route path="profile"         element={<ProfilePage />} />
-            <Route path="teams"           element={<TeamsPage />} />
-            <Route path="teams/:id"       element={<TeamDetailPage />} />
-            <Route path="projects"        element={<ProjectsPage />} />
-            <Route path="projects/:id"    element={<ProjectDetailPage />} />
-            <Route path="recommendations" element={<RecommendPage />} />
-            <Route path="invitations"     element={<InvitationsPage />} />
-            <Route path="notifications"   element={<NotificationsPage />} />
-            <Route path="explore"         element={<ExplorePage />} />
-            <Route path="profile/:userId" element={<UserProfilePage />} />
-            <Route path="ai-ideas"        element={<IdeaGenerator />} />
-            <Route path="skill-gap"       element={<SkillGapAnalyzer />} />
+            <Route index                     element={<DashboardHome />} />
+            <Route path="profile"            element={<ProfilePage />} />
+            <Route path="teams"              element={<TeamsPage />} />
+            <Route path="teams/:id"          element={<TeamDetailPage />} />
+            <Route path="projects"           element={<ProjectsPage />} />
+            <Route path="projects/:id"       element={<ProjectDetailPage />} />
+            <Route path="invitations"        element={<InvitationsPage />} />
+            <Route path="notifications"      element={<NotificationsPage />} />
+            <Route path="explore"            element={<ExplorePage />} />
+            <Route path="profile/:userId"    element={<UserProfilePage />} />
+            <Route path="ai-ideas"           element={<IdeaGenerator />} />
+            <Route path="skill-gap"          element={<SkillGapAnalyzer />} />
             <Route path="ai-recommendations" element={<AIRecommendations />} />
           </Route>
 

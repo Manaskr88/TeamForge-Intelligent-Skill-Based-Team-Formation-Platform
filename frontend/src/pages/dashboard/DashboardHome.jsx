@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Users, FolderKanban, Sparkles, Code2, ArrowRight, Plus, TrendingUp, Clock, Star } from 'lucide-react'
+import { Users, FolderKanban, Brain, Code2, ArrowRight, Plus, Star } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { userAPI, recommendationAPI } from '../../services/api'
 import Avatar from '../../components/ui/Avatar'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
-import { PageLoader, SkeletonCard } from '../../components/ui/Loader'
+import { PageLoader } from '../../components/ui/Loader'
 import toast from 'react-hot-toast'
 
 const cardVariants = {
@@ -145,17 +145,17 @@ export default function DashboardHome() {
           )}
         </div>
 
-        {/* Recommendations */}
+        {/* Recommendations → now points to AI Recommendations */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">Recommended</h2>
-            <Link to="/dashboard/recommendations" className="text-sm text-primary-600 hover:text-primary-700 font-medium flex items-center gap-1">
+            <Link to="/dashboard/ai-recommendations" className="text-sm text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1">
               See all <ArrowRight size={14} />
             </Link>
           </div>
           {recs.length === 0 ? (
             <div className="card p-6 text-center">
-              <Sparkles size={28} className="text-slate-300 mx-auto mb-2" />
+              <Brain size={28} className="text-slate-300 mx-auto mb-2" />
               <p className="text-slate-500 text-sm">Add skills to get recommendations.</p>
             </div>
           ) : (
