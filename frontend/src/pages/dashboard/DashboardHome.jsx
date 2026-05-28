@@ -147,6 +147,7 @@ export default function DashboardHome() {
 
         {/* Recommendations → now points to AI Recommendations */}
         <div className="space-y-4">
+          
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900">Recommended</h2>
             <Link to="/dashboard/ai-recommendations" className="text-sm text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1">
