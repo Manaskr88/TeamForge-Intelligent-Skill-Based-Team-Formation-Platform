@@ -147,4 +147,25 @@ const getDashboardStats = async (req, res) => {
   }
 };
 
-module.exports = { getUsers, getUserById, updateProfile, getDashboardStats };
+module.exports = { getUsers, getUserById, updateProfile, getDashboardStats, uploadAvatar };
+
+// ── Upload avatar ─────────────────────────────────────────────────────────────
+async function uploadAvatar(req, res) {
+  try {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+
+    const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5000}`;
+    const avatarUrl   = `${BACKEND_URL}/uploads/profile-images/${req.file.filename}`;
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { avatar: avatarUrl } },
+      { new: true }
+    ).select('-password');
+
+    res.json({ success: true, message: 'Avatar uploaded', avatar: avatarUrl, user });
+  } catch (err) {
+    console.error('Upload avatar error:', err);
+    res.status(500).json({ success: false, message: 'Upload failed' });
+  }
+}
