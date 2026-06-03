@@ -40,6 +40,13 @@ export const userAPI = {
   getById:       (id)     => api.get(`/users/${id}`),
   updateProfile: (data)   => api.put('/users/profile', data),
   getDashboard:  ()       => api.get('/users/dashboard'),
+  uploadAvatar:  (file)   => {
+    const fd = new FormData()
+    fd.append('avatar', file)
+    return api.post('/users/upload-avatar', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
 }
 
 // ── Teams ─────────────────────────────────────────────

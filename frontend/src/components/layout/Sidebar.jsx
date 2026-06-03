@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LayoutDashboard, Users, FolderKanban,
-  Mail, Bell, Search, User, LogOut, X, ChevronRight,
+  Mail, Search, User, LogOut, X, ChevronRight,
   Brain, Lightbulb, BarChart3
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -10,13 +10,12 @@ import Avatar from '../ui/Avatar'
 import LogoIcon from '../ui/LogoIcon'
 
 const navItems = [
-  { to: '/dashboard',              icon: LayoutDashboard, label: 'Dashboard', end: true },
-  { to: '/dashboard/explore',      icon: Search,          label: 'Explore' },
-  { to: '/dashboard/teams',        icon: Users,           label: 'Teams' },
-  { to: '/dashboard/projects',     icon: FolderKanban,    label: 'Projects' },
-  { to: '/dashboard/invitations',  icon: Mail,            label: 'Invitations' },
-  { to: '/dashboard/notifications',icon: Bell,            label: 'Notifications' },
-  { to: '/dashboard/profile',      icon: User,            label: 'Profile' },
+  { to: '/dashboard',             icon: LayoutDashboard, label: 'Dashboard',  end: true },
+  { to: '/dashboard/explore',     icon: Search,          label: 'Explore' },
+  { to: '/dashboard/teams',       icon: Users,           label: 'Teams' },
+  { to: '/dashboard/projects',    icon: FolderKanban,    label: 'Projects' },
+  { to: '/dashboard/invitations', icon: Mail,            label: 'Invitations' },
+  { to: '/dashboard/profile',     icon: User,            label: 'Profile' },
 ]
 
 const aiNavItems = [
