@@ -174,17 +174,37 @@ const applyToProject = async (req, res) => {
   }
 };
 
-// @desc    Get my projects
+// @desc    Get my projects (owned + joined via team membership)
 // @route   GET /api/projects/my
 // @access  Private
 const getMyProjects = async (req, res) => {
   try {
-    const projects = await Project.find({ owner: req.user._id })
+    const userId = req.user._id;
+
+    // Find all teams the user is a member of
+    const userTeams = await require('../models/Team.model')
+      .find({ 'members.user': userId })
+      .select('project')
+      .lean();
+
+    const teamProjectIds = userTeams
+      .filter(t => t.project)
+      .map(t => t.project);
+
+    // Return projects the user owns OR is a member of via team
+    const projects = await Project.find({
+      $or: [
+        { owner: userId },
+        { _id:   { $in: teamProjectIds } },
+        { 'applicants.user': userId },
+      ]
+    })
       .populate('owner', 'name avatar')
       .sort({ createdAt: -1 });
 
     res.json({ success: true, projects });
   } catch (error) {
+    console.error('getMyProjects error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };

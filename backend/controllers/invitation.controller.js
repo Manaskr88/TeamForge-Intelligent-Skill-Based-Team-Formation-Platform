@@ -124,7 +124,14 @@ const respondToInvitation = async (req, res) => {
       if (!alreadyMember) {
         team.members.push({ user: req.user._id, role: 'member' });
         await team.save();
+
+        // Add team to user's teams list
         await User.findByIdAndUpdate(req.user._id, { $addToSet: { teams: team._id } });
+
+        // Also add the team's linked project to user's projects (if any)
+        if (team.project) {
+          await User.findByIdAndUpdate(req.user._id, { $addToSet: { projects: team.project } });
+        }
       }
 
       await Notification.create({

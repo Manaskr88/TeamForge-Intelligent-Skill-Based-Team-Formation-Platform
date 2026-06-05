@@ -87,9 +87,21 @@ const getDashboardStats = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // Find team-linked projects for this user
+    const userTeams = await Team.find({ 'members.user': userId }).select('project').lean();
+    const teamProjectIds = userTeams.filter(t => t.project).map(t => t.project);
+
+    const projectQuery = {
+      $or: [
+        { owner: userId },
+        { 'applicants.user': userId },
+        { _id: { $in: teamProjectIds } },
+      ]
+    };
+
     const [teamsCount, projectsCount, user] = await Promise.all([
       Team.countDocuments({ 'members.user': userId }),
-      Project.countDocuments({ $or: [{ owner: userId }, { 'applicants.user': userId }] }),
+      Project.countDocuments(projectQuery),
       User.findById(userId)
         .populate('teams',    'name status projectType members')
         .populate('projects', 'title status category'),
@@ -100,7 +112,7 @@ const getDashboardStats = async (req, res) => {
         .populate('leader',       'name avatar')
         .populate('members.user', 'name avatar')
         .limit(5),
-      Project.find({ $or: [{ owner: userId }, { 'applicants.user': userId }] })
+      Project.find(projectQuery)
         .populate('owner', 'name avatar')
         .sort({ createdAt: -1 })
         .limit(5),
