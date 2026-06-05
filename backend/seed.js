@@ -68,14 +68,35 @@ async function seedUsers() {
   const created = [];
 
   for (const u of SEED_USERS) {
-    const salt     = await bcrypt.genSalt(12);
-    const hashed   = await bcrypt.hash(u.password, salt);
-    const user     = await User.create({ ...u, password: hashed });
+    // Hash password manually THEN use insertOne to bypass the pre-save hook
+    // (avoids double-hashing which breaks login)
+    const salt   = await bcrypt.genSalt(12);
+    const hashed = await bcrypt.hash(u.password, salt);
+
+    // Use insertOne to skip mongoose middleware (pre-save hook)
+    const result = await User.collection.insertOne({
+      ...u,
+      password:    hashed,
+      teams:       [],
+      projects:    [],
+      completedProjects: 0,
+      rating:      0,
+      isOnline:    false,
+      lastSeen:    new Date(),
+      github:      '',
+      linkedin:    '',
+      website:     '',
+      location:    '',
+      createdAt:   new Date(),
+      updatedAt:   new Date(),
+    });
+
+    const user = await User.findById(result.insertedId);
     created.push(user);
     log(`Created user: ${user.name} (${user.email})`);
   }
 
-  return created; // array preserving order of SEED_USERS
+  return created;
 }
 
 // ── Seed projects ─────────────────────────────────────────────────────────────
