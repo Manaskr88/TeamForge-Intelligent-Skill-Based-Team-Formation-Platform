@@ -184,4 +184,4 @@ team_forge/
 
 ---
 
-Built with ❤️ for developers, by developers.
+Built with ❤️ for developers, by Manas.
