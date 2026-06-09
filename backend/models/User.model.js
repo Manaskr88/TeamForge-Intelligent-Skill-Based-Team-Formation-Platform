@@ -95,6 +95,17 @@ const userSchema = new mongoose.Schema({
   isVerified: {
     type: Boolean,
     default: false
+  },
+  // OAuth provider fields
+  googleId: {
+    type: String,
+    default: '',
+    sparse: true,
+  },
+  provider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local',
   }
 }, {
   timestamps: true
