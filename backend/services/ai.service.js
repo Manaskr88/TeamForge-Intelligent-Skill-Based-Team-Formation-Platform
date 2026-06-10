@@ -258,10 +258,52 @@ Return ONLY this JSON array (one object per candidate, same order):
   }).sort((a, b) => b.compatibility.score - a.compatibility.score);
 }
 
+// ── Feature 6: Extract project details from free-text description ─────────────
+async function extractProjectDetails({ problemArea }) {
+  const system = `You are a smart project details extractor for a hackathon platform.
+Extract structured project information from a natural language description.
+Always respond with ONLY valid JSON — no markdown fences, no extra text.
+If a field cannot be determined, use sensible defaults.`;
+
+  const userMsg = `Extract project details from this description:
+"${problemArea}"
+
+Return ONLY this JSON (no markdown, no extra text):
+{
+  "domain": "string (e.g. Healthcare, Education, Fintech, Productivity, E-commerce, Social Impact, Environment, Cybersecurity, AI/ML, Blockchain, Gaming, Travel, Food Tech, General)",
+  "techStack": ["tech1", "tech2", "tech3"],
+  "teamSize": "string (e.g. 3-4, 5-6, 1-2)",
+  "difficulty": "beginner|intermediate|advanced",
+  "theme": "string (e.g. HealthTech, EdTech, FinTech, Open Innovation, AI-First, Climate Tech, Social Good, Smart Cities, Web3, Future of Work)"
+}
+
+Rules:
+- techStack: extract any technologies mentioned (React, Node.js, Python, MongoDB, etc). If MERN mentioned, expand to ["React", "Node.js", "Express.js", "MongoDB"]
+- teamSize: if a number like "4 members" or "team of 5", convert to range like "3-4" or "5-6"  
+- difficulty: estimate based on complexity of what's described
+- domain: pick the closest from the list
+- theme: pick the closest from the list based on domain`;
+
+  const raw = await chat(system, userMsg, 400);
+  try {
+    return parseJSON(raw);
+  } catch {
+    // Fallback defaults if parsing fails
+    return {
+      domain:     'General',
+      techStack:  [],
+      teamSize:   '3-4',
+      difficulty: 'intermediate',
+      theme:      'Open Innovation',
+    };
+  }
+}
+
 module.exports = {
   teamChatAssistant,
   generateHackathonIdea,
   analyzeSkillGap,
   aiTeamRecommendations,
   aiTeamModeRecommendations,
+  extractProjectDetails,
 };

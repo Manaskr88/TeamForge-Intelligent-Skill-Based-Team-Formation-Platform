@@ -28,10 +28,11 @@ api.interceptors.response.use(
 
 // ── Auth ──────────────────────────────────────────────
 export const authAPI = {
-  register: (data) => api.post('/auth/register', data),
-  login:    (data) => api.post('/auth/login', data),
-  getMe:    ()     => api.get('/auth/me'),
-  logout:   ()     => api.post('/auth/logout'),
+  register:   (data) => api.post('/auth/register', data),
+  login:      (data) => api.post('/auth/login', data),
+  googleAuth: (data) => api.post('/auth/google', data),
+  getMe:      ()     => api.get('/auth/me'),
+  logout:     ()     => api.post('/auth/logout'),
 }
 
 // ── Users ─────────────────────────────────────────────
@@ -109,14 +110,15 @@ export const profileAPI = {
 
 // ── AI Features ───────────────────────────────────────
 export const aiAPI = {
-  chat:                (data)   => api.post('/ai/chat', data),
-  generateIdea:        (data)   => api.post('/ai/generate-idea', data),
-  saveIdea:            (data)   => api.post('/ai/save-idea', data),
-  getSavedIdeas:       ()       => api.get('/ai/saved-ideas'),
-  deleteSavedIdea:     (id)     => api.delete(`/ai/saved-ideas/${id}`),
-  skillGapAnalysis:    (data)   => api.post('/ai/skill-gap-analysis', data),
-  teamRecommendations: (params) => api.post('/ai/team-recommendations', {}, { params }),
-  teamAnalysis:        (data)   => api.post('/ai/team-analysis', data),
+  chat:                  (data)   => api.post('/ai/chat', data),
+  generateIdea:          (data)   => api.post('/ai/generate-idea', data),
+  saveIdea:              (data)   => api.post('/ai/save-idea', data),
+  getSavedIdeas:         ()       => api.get('/ai/saved-ideas'),
+  deleteSavedIdea:       (id)     => api.delete(`/ai/saved-ideas/${id}`),
+  skillGapAnalysis:      (data)   => api.post('/ai/skill-gap-analysis', data),
+  teamRecommendations:   (params) => api.post('/ai/team-recommendations', {}, { params }),
+  teamAnalysis:          (data)   => api.post('/ai/team-analysis', data),
+  extractProjectDetails: (data)   => api.post('/ai/extract-project-details', data),
 }
 
 export default api

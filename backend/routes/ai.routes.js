@@ -11,6 +11,7 @@ const {
   skillGapAnalysis,
   aiTeamRecommendations,
   aiTeamAnalysis,
+  extractProjectDetails,
 } = require('../controllers/ai.controller');
 
 // Rate limiter — 20 AI requests per user per minute
@@ -47,5 +48,8 @@ router.post('/team-recommendations', aiTeamRecommendations);
 
 // Feature 5 — AI Team Analysis (For Team)
 router.post('/team-analysis', aiTeamAnalysis);
+
+// Feature 6 — Extract project details from free text
+router.post('/extract-project-details', extractProjectDetails);
 
 module.exports = router;

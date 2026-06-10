@@ -3,27 +3,30 @@ import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Mail, Lock, User, ArrowRight, Eye, EyeOff, Plus, X } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { authAPI } from '../services/api'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { Select } from '../components/ui/Input'
 import LogoIcon from '../components/ui/LogoIcon'
+import GoogleButton from '../components/ui/GoogleButton'
 import toast from 'react-hot-toast'
 
 const POPULAR_SKILLS = ['React','Node.js','Python','TypeScript','MongoDB','AWS','Docker','Figma','Flutter','Go','Rust','Vue.js']
 
 export default function RegisterPage() {
-  const [step, setStep]       = useState(1)
-  const [loading, setLoading] = useState(false)
-  const [showPw, setShowPw]   = useState(false)
+  const [step, setStep]           = useState(1)
+  const [loading, setLoading]     = useState(false)
+  const [gLoading, setGLoading]   = useState(false)
+  const [showPw, setShowPw]       = useState(false)
   const [skillInput, setSkillInput] = useState('')
-  const [form, setForm]       = useState({
+  const [form, setForm]           = useState({
     name: '', email: '', password: '',
     role: 'developer', skills: [],
-    experienceLevel: 'beginner', availability: 'part-time'
+    experienceLevel: 'beginner', availability: 'part-time',
   })
-  const [errors, setErrors]   = useState({})
-  const { register }          = useAuth()
-  const navigate              = useNavigate()
+  const [errors, setErrors]       = useState({})
+  const { register, setSession } = useAuth()
+  const navigate                  = useNavigate()
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -35,12 +38,10 @@ export default function RegisterPage() {
     }
   }
 
-  const removeSkill = (s) => set('skills', form.skills.filter(x => x !== s))
-
   const validateStep1 = () => {
     const e = {}
-    if (!form.name.trim())    e.name     = 'Name is required'
-    if (!form.email.trim())   e.email    = 'Email is required'
+    if (!form.name.trim())        e.name     = 'Name is required'
+    if (!form.email.trim())       e.email    = 'Email is required'
     if (form.password.length < 6) e.password = 'Min 6 characters'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -55,13 +56,24 @@ export default function RegisterPage() {
       navigate('/dashboard')
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed')
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
+  }
+
+  // Google OAuth callback — creates/logs in user directly
+  const handleGoogleSuccess = async (credential) => {
+    setGLoading(true)
+    try {
+      const { data } = await authAPI.googleAuth({ credential })
+      setSession(data.token, data.user)
+      toast.success(`Welcome to TeamForge, ${data.user.name}!`)
+      navigate('/dashboard')
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Google sign-up failed')
+    } finally { setGLoading(false) }
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-primary-50/20 to-violet-50/30 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100/40 to-blue-50/30 flex items-center justify-center p-4">
       <div className="w-full max-w-lg">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-6">
@@ -69,7 +81,7 @@ export default function RegisterPage() {
             <span className="font-bold text-2xl text-slate-900">Team<span className="gradient-text">Forge</span></span>
           </Link>
           <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
-          <p className="text-slate-500 text-sm mt-1">Join 12,000+ developers building together</p>
+          <p className="text-slate-500 text-sm mt-1">Join developers building together</p>
         </motion.div>
 
         {/* Step indicator */}
@@ -77,20 +89,34 @@ export default function RegisterPage() {
           {[1, 2].map(s => (
             <div key={s} className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${step >= s ? 'gradient-bg text-white' : 'bg-slate-100 text-slate-400'}`}>{s}</div>
-              {s < 2 && <div className={`w-12 h-0.5 rounded-full transition-all ${step > s ? 'bg-primary-500' : 'bg-slate-200'}`} />}
+              {s < 2 && <div className={`w-12 h-0.5 rounded-full transition-all ${step > s ? 'bg-slate-700' : 'bg-slate-200'}`} />}
             </div>
           ))}
         </div>
 
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, x: step === 1 ? -20 : 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="bg-white rounded-2xl shadow-card border border-slate-100 p-8"
-        >
+        <motion.div key={step} initial={{ opacity: 0, x: step === 1 ? -20 : 20 }} animate={{ opacity: 1, x: 0 }}
+          className="bg-white rounded-2xl shadow-card border border-slate-100 p-8">
+
           {step === 1 ? (
             <div className="space-y-5">
               <h2 className="text-lg font-bold text-slate-900 mb-1">Basic information</h2>
+
+              {/* Google Sign Up */}
+              {gLoading ? (
+                <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-500">
+                  <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                  Creating account with Google...
+                </div>
+              ) : (
+                <GoogleButton onSuccess={handleGoogleSuccess} text="signup_with" />
+              )}
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1 h-px bg-slate-100" />
+                <span className="text-xs text-slate-400 font-medium">or sign up with email</span>
+                <div className="flex-1 h-px bg-slate-100" />
+              </div>
+
               <Input label="Full name" placeholder="Alex Kumar" value={form.name}
                 onChange={e => set('name', e.target.value)} icon={<User size={16} />} error={errors.name} />
               <Input label="Email address" type="email" placeholder="you@example.com" value={form.email}
@@ -111,7 +137,7 @@ export default function RegisterPage() {
               </div>
               <Select label="I am a..." value={form.role} onChange={e => set('role', e.target.value)}>
                 {['developer','student','designer','mentor','other'].map(r => (
-                  <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
+                  <option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>
                 ))}
               </Select>
               <Button className="w-full" size="lg" onClick={() => { if (validateStep1()) setStep(2) }} icon={<ArrowRight size={16} />}>
@@ -133,14 +159,14 @@ export default function RegisterPage() {
                   {form.skills.map(s => (
                     <span key={s} className="skill-tag">
                       {s}
-                      <button type="button" onClick={() => removeSkill(s)} className="ml-1 hover:text-red-500"><X size={10} /></button>
+                      <button type="button" onClick={() => set('skills', form.skills.filter(x => x !== s))} className="ml-1 hover:text-red-500"><X size={10} /></button>
                     </span>
                   ))}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {POPULAR_SKILLS.filter(s => !form.skills.includes(s)).slice(0, 8).map(s => (
                     <button key={s} type="button" onClick={() => addSkill(s)}
-                      className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full hover:bg-primary-50 hover:text-primary-700 transition-colors">
+                      className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full hover:bg-slate-200 transition-colors">
                       + {s}
                     </button>
                   ))}
@@ -167,7 +193,7 @@ export default function RegisterPage() {
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <p className="text-sm text-slate-500">
               Already have an account?{' '}
-              <Link to="/login" className="text-primary-600 font-semibold hover:text-primary-700">Sign in</Link>
+              <Link to="/login" className="font-semibold text-slate-800 hover:text-slate-600">Sign in</Link>
             </p>
           </div>
         </motion.div>

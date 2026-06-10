@@ -277,6 +277,30 @@ const aiTeamAnalysis = async (req, res) => {
   }
 };
 
+// ── Feature 6: Extract project details from free-text description ─────────────
+// POST /api/ai/extract-project-details
+const extractProjectDetails = async (req, res) => {
+  try {
+    const { problemArea } = req.body;
+    if (!problemArea?.trim()) {
+      return res.status(400).json({ success: false, message: 'problemArea is required' });
+    }
+    if (problemArea.trim().length < 10) {
+      return res.status(400).json({ success: false, message: 'Please describe your project in more detail' });
+    }
+
+    const details = await aiService.extractProjectDetails({ problemArea: problemArea.trim() });
+    res.json({ success: true, details });
+  } catch (err) {
+    console.error('Extract project details error:', err.message);
+    // Return defaults instead of failing hard
+    res.json({
+      success: true,
+      details: { domain: 'General', techStack: [], teamSize: '3-4', difficulty: 'intermediate', theme: 'Open Innovation' },
+    });
+  }
+};
+
 module.exports = {
   chatAssistant,
   generateIdea,
@@ -286,4 +310,5 @@ module.exports = {
   skillGapAnalysis,
   aiTeamRecommendations,
   aiTeamAnalysis,
+  extractProjectDetails,
 };

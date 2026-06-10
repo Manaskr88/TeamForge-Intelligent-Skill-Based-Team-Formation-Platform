@@ -57,12 +57,23 @@ export const AuthProvider = ({ children }) => {
   }, [])
 
   const updateUser = useCallback((updated) => {
-    setUser(prev => ({ ...prev, ...updated }))
-    localStorage.setItem('tf_user', JSON.stringify({ ...user, ...updated }))
-  }, [user])
+    setUser(prev => {
+      const merged = { ...prev, ...updated }
+      localStorage.setItem('tf_user', JSON.stringify(merged))
+      return merged
+    })
+  }, [])
+
+  // Used by Google OAuth — sets token + user from outside
+  const setSession = useCallback((tokenVal, userData) => {
+    localStorage.setItem('tf_token', tokenVal)
+    localStorage.setItem('tf_user', JSON.stringify(userData))
+    setToken(tokenVal)
+    setUser(userData)
+  }, [])
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser, isAuthenticated: !!user }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, logout, updateUser, setSession, isAuthenticated: !!user }}>
       {children}
     </AuthContext.Provider>
   )
