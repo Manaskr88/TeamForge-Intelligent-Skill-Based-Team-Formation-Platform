@@ -42,6 +42,9 @@ export default function LoginPage() {
     }
   }
 
+
+    
+
   // Google OAuth callback
   const handleGoogleSuccess = async (credential) => {
     setGLoading(true)
@@ -73,24 +76,15 @@ export default function LoginPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="bg-white rounded-2xl shadow-card border border-slate-100 p-8"
         >
-          {/* Google Sign In */}
-          <div className="mb-5">
-            {gLoading ? (
-              <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-500">
-                <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-                Signing in with Google...
-              </div>
-            ) : (
-              <GoogleButton onSuccess={handleGoogleSuccess} text="signin_with" />
-            )}
-          </div>
+        
+         
 
           {/* Divider */}
-          <div className="flex items-center gap-3 mb-5">
+          {/* <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px bg-slate-100" />
             <span className="text-xs text-slate-400 font-medium">or continue with email</span>
             <div className="flex-1 h-px bg-slate-100" />
-          </div>
+          </div> */}
 
           {/* Email/Password form */}
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -126,6 +120,25 @@ export default function LoginPage() {
             </Button>
           </form>
 
+            <br/>
+             <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px bg-slate-100" />
+            <span className="text-xs text-slate-400 font-medium">or continue with </span>
+            <div className="flex-1 h-px bg-slate-100" />
+          </div>
+
+           {/* Google Sign In */}
+          <div className="mb-5">
+            {gLoading ? (
+              <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-500">
+                <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                Signing in with Google...
+              </div>
+            ) : (
+              <GoogleButton onSuccess={handleGoogleSuccess} text="Log in with Google" />
+            )}
+          </div>
+
           <div className="mt-6 pt-6 border-t border-slate-100 text-center">
             <p className="text-sm text-slate-500">
               Don't have an account?{' '}
@@ -133,15 +146,18 @@ export default function LoginPage() {
             </p>
           </div>
 
+
+          
+
           {/* Demo credentials */}
-          <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+          {/* <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
             <p className="text-xs text-slate-500 font-medium text-center mb-2">Demo Account</p>
             <button type="button"
               onClick={() => setForm({ email: 'shivam.gupta@gmail.com', password: 'Password@123' })}
               className="w-full text-xs bg-white border border-slate-200 text-slate-600 py-1.5 rounded-lg hover:bg-slate-50 transition-colors font-medium">
               Fill Demo Credentials
             </button>
-          </div>
+          </div> */}
         </motion.div>
       </div>
     </div>

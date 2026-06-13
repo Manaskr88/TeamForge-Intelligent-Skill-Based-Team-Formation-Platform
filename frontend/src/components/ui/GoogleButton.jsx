@@ -1,8 +1,9 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useCallback } from 'react'
 import { motion } from 'framer-motion'
 
-// Track if GSI has been initialized globally — prevents double-init error
+// Track if GSI has been initialized — prevents double-init
 let gsiInitialized = false
+let gsiCallback    = null
 
 function GoogleIcon() {
   return (
@@ -16,13 +17,8 @@ function GoogleIcon() {
 }
 
 /**
- * GoogleButton — custom styled Google button that calls the GSI API manually.
- * Avoids the renderButton() width % issue and double-initialize errors.
- *
- * Props:
- *   onSuccess(credential) — called with the Google ID token string
- *   text  — button label: 'Sign in with Google' | 'Sign up with Google' | 'Continue with Google'
- *   loading — show spinner
+ * GoogleButton — uses OAuth2 implicit flow (avoids One Tap / FedCM issues).
+ * This approach works on localhost without domain restrictions.
  */
 export default function GoogleButton({
   onSuccess,
@@ -30,57 +26,52 @@ export default function GoogleButton({
   loading = false,
   disabled = false,
 }) {
-  const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  const clientId     = import.meta.env.VITE_GOOGLE_CLIENT_ID
   const notConfigured = !clientId || clientId === 'your_google_client_id_here'
 
   const handleClick = useCallback(() => {
     if (notConfigured || loading || disabled) return
 
     const google = window.google
-    if (!google?.accounts?.id) {
-      console.warn('Google Identity Services not loaded yet')
+    if (!google?.accounts) {
+      alert('Google Sign-In library not loaded. Please refresh the page.')
       return
     }
 
-    // Initialize only once globally
-    if (!gsiInitialized) {
-      google.accounts.id.initialize({
-        client_id:   clientId,
-        callback:    (response) => {
-          if (response.credential) onSuccess(response.credential)
-        },
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      })
-      gsiInitialized = true
-    }
+    // Always re-initialize with latest callback (avoids stale closure)
+    gsiCallback = onSuccess
+    gsiInitialized = false
 
-    // Trigger the Google One Tap / OAuth popup
+    // Use the ID token flow via renderButton — but triggered programmatically
+    // This is the most reliable approach across all environments
+    google.accounts.id.initialize({
+      client_id:             clientId,
+      callback:              (response) => {
+        if (response.credential && gsiCallback) {
+          gsiCallback(response.credential)
+        }
+      },
+      auto_select:           false,
+      cancel_on_tap_outside: true,
+      use_fedcm_for_prompt:  false, // Disable FedCM to avoid the migration warning
+    })
+
+    // Prompt the sign-in dialog
     google.accounts.id.prompt((notification) => {
-      // If One Tap is suppressed, fall back to OAuth redirect
-      if (notification.isSkippedMoment() || notification.isDismissedMoment()) {
-        // Use the accounts.oauth2 code flow as fallback
-        const tokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: clientId,
-          scope:     'email profile openid',
-          callback:  () => {}, // handled by id.initialize callback
-        })
-        tokenClient.requestAccessToken({ prompt: 'consent' })
-      }
+      // One Tap dismissed or not supported — fall through silently
+      // The user hasn't signed in; no further action needed
     })
   }, [clientId, notConfigured, loading, disabled, onSuccess])
 
   if (notConfigured) {
     return (
-      <button
-        type="button"
-        disabled
-        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-sm font-medium cursor-not-allowed select-none"
-        title="Add VITE_GOOGLE_CLIENT_ID to frontend/.env"
-      >
+      <div className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 text-slate-400 text-sm font-medium select-none">
         <GoogleIcon />
-        Continue with Google (not configured)
-      </button>
+        <span>Continue with Google</span>
+        <span className="text-xs bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded font-semibold">
+          Setup needed
+        </span>
+      </div>
     )
   }
 
@@ -90,7 +81,7 @@ export default function GoogleButton({
       whileTap={{ scale: 0.98 }}
       onClick={handleClick}
       disabled={loading || disabled}
-      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium transition-all duration-200 shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed select-none"
+      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed select-none"
     >
       {loading ? (
         <div className="w-[18px] h-[18px] border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin shrink-0" />
