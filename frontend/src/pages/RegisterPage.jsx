@@ -8,25 +8,27 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { Select } from '../components/ui/Input'
 import LogoIcon from '../components/ui/LogoIcon'
-import GoogleButton from '../components/ui/GoogleButton'
+// import GoogleButton from '../components/ui/GoogleButton'
 import toast from 'react-hot-toast'
 
-const POPULAR_SKILLS = ['React','Node.js','Python','TypeScript','MongoDB','AWS','Docker','Figma','Flutter','Go','Rust','Vue.js']
+import { GoogleLogin } from '@react-oauth/google'
+
+const POPULAR_SKILLS = ['React', 'Node.js', 'Python', 'TypeScript', 'MongoDB', 'AWS', 'Docker', 'Figma', 'Flutter', 'Go', 'Rust', 'Vue.js']
 
 export default function RegisterPage() {
-  const [step, setStep]           = useState(1)
-  const [loading, setLoading]     = useState(false)
-  const [gLoading, setGLoading]   = useState(false)
-  const [showPw, setShowPw]       = useState(false)
+  const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [gLoading, setGLoading] = useState(false)
+  const [showPw, setShowPw] = useState(false)
   const [skillInput, setSkillInput] = useState('')
-  const [form, setForm]           = useState({
+  const [form, setForm] = useState({
     name: '', email: '', password: '',
     role: 'developer', skills: [],
     experienceLevel: 'beginner', availability: 'part-time',
   })
-  const [errors, setErrors]       = useState({})
+  const [errors, setErrors] = useState({})
   const { register, setSession } = useAuth()
-  const navigate                  = useNavigate()
+  const navigate = useNavigate()
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
@@ -40,8 +42,8 @@ export default function RegisterPage() {
 
   const validateStep1 = () => {
     const e = {}
-    if (!form.name.trim())        e.name     = 'Name is required'
-    if (!form.email.trim())       e.email    = 'Email is required'
+    if (!form.name.trim()) e.name = 'Name is required'
+    if (!form.email.trim()) e.email = 'Email is required'
     if (form.password.length < 6) e.password = 'Min 6 characters'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -108,7 +110,19 @@ export default function RegisterPage() {
                   Creating account with Google...
                 </div>
               ) : (
-                <GoogleButton onSuccess={handleGoogleSuccess} text="signup_with" />
+                <GoogleLogin
+                  text="signup_with"
+                  theme="outline"
+                  size="large"
+                  // shape="pill"
+                  // width="350"
+                  onSuccess={(credentialResponse) => {
+                    handleGoogleSuccess(credentialResponse.credential)
+                  }}
+                  onError={() => {
+                    toast.error("Google sign-up failed")
+                  }}
+                />
               )}
 
               <div className="flex items-center gap-3">
@@ -136,8 +150,8 @@ export default function RegisterPage() {
                 {errors.password && <p className="mt-1 text-xs text-red-500">{errors.password}</p>}
               </div>
               <Select label="I am a..." value={form.role} onChange={e => set('role', e.target.value)}>
-                {['developer','student','designer','mentor','other'].map(r => (
-                  <option key={r} value={r}>{r.charAt(0).toUpperCase()+r.slice(1)}</option>
+                {['developer', 'student', 'designer', 'mentor', 'other'].map(r => (
+                  <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>
                 ))}
               </Select>
               <Button className="w-full" size="lg" onClick={() => { if (validateStep1()) setStep(2) }} icon={<ArrowRight size={16} />}>
