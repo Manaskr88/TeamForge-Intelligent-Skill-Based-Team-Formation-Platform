@@ -7,21 +7,34 @@ import { authAPI } from '../services/api'
 import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import LogoIcon from '../components/ui/LogoIcon'
-import GoogleButton from '../components/ui/GoogleButton'
+// import GoogleButton from '../components/ui/GoogleButton'
 import toast from 'react-hot-toast'
 
+import { GoogleLogin } from '@react-oauth/google';
+
+
+<GoogleLogin
+  onSuccess={(credentialResponse) => {
+    console.log("SUCCESS");
+    console.log(credentialResponse);
+  }}
+  onError={() => {
+    console.log("FAILED");
+  }}
+/>
+
 export default function LoginPage() {
-  const [form, setForm]       = useState({ email: '', password: '' })
-  const [showPw, setShowPw]   = useState(false)
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [showPw, setShowPw] = useState(false)
   const [loading, setLoading] = useState(false)
   const [gLoading, setGLoading] = useState(false)
-  const [errors, setErrors]   = useState({})
+  const [errors, setErrors] = useState({})
   const { login, setSession } = useAuth()
-  const navigate              = useNavigate()
+  const navigate = useNavigate()
 
   const validate = () => {
     const e = {}
-    if (!form.email)    e.email    = 'Email is required'
+    if (!form.email) e.email = 'Email is required'
     if (!form.password) e.password = 'Password is required'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -43,7 +56,7 @@ export default function LoginPage() {
   }
 
 
-    
+
 
   // Google OAuth callback
   const handleGoogleSuccess = async (credential) => {
@@ -76,8 +89,8 @@ export default function LoginPage() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
           className="bg-white rounded-2xl shadow-card border border-slate-100 p-8"
         >
-        
-         
+
+
 
           {/* Divider */}
           {/* <div className="flex items-center gap-3 mb-5">
@@ -120,14 +133,15 @@ export default function LoginPage() {
             </Button>
           </form>
 
-            <br/>
-             <div className="flex items-center gap-3 mb-5">
+          <br />
+          <div className="flex items-center gap-3 mb-5">
             <div className="flex-1 h-px bg-slate-100" />
             <span className="text-xs text-slate-400 font-medium">or continue with </span>
             <div className="flex-1 h-px bg-slate-100" />
           </div>
 
-           {/* Google Sign In */}
+          {/* Google Sign In */}
+          {/* Google Sign In */}
           <div className="mb-5">
             {gLoading ? (
               <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-500">
@@ -135,7 +149,16 @@ export default function LoginPage() {
                 Signing in with Google...
               </div>
             ) : (
-              <GoogleButton onSuccess={handleGoogleSuccess} text="Log in with Google" />
+              <GoogleLogin
+                onSuccess={(credentialResponse) => {
+                  if (credentialResponse.credential) {
+                    handleGoogleSuccess(credentialResponse.credential);
+                  }
+                }}
+                onError={() => {
+                  toast.error("Google Login Failed");
+                }}
+              />
             )}
           </div>
 
@@ -147,7 +170,7 @@ export default function LoginPage() {
           </div>
 
 
-          
+
 
           {/* Demo credentials */}
           {/* <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
