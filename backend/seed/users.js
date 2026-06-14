@@ -1,12 +1,15 @@
 /**
  * Seed users — 6 realistic developer profiles
- * Password for all: Password@123 (hashed via bcrypt in User model pre-save hook)
+ * Password for all users: read from SEED_PASSWORD env var, default SEED_PASSWORD
+ * Change SEED_PASSWORD in .env before seeding in production.
  */
+const SEED_PASSWORD = process.env.SEED_PASSWORD || SEED_PASSWORD;
+
 const SEED_USERS = [
   {
     name:            'Shivam Gupta',
     email:           'shivam.gupta@gmail.com',
-    password:        'Password@123',
+    password:        SEED_PASSWORD,
     role:            'developer',
     bio:             'Full Stack MERN Developer passionate about hackathons and scalable web applications.',
     skills:          ['React', 'Node.js', 'MongoDB', 'Express.js'],
@@ -18,7 +21,7 @@ const SEED_USERS = [
   {
     name:            'Divyanshu Sharma',
     email:           'divyanshu.sharma@gmail.com',
-    password:        'Password@123',
+    password:        SEED_PASSWORD,
     role:            'developer',
     bio:             'Machine Learning enthusiast focused on AI products.',
     skills:          ['Python', 'Machine Learning', 'TensorFlow', 'Data Science'],
@@ -30,7 +33,7 @@ const SEED_USERS = [
   {
     name:            'Adnan Khan',
     email:           'adnan.khan@gmail.com',
-    password:        'Password@123',
+    password:        SEED_PASSWORD,
     role:            'designer',
     bio:             'Creative UI designer and frontend developer.',
     skills:          ['UI/UX', 'Figma', 'React', 'Tailwind CSS'],
@@ -42,7 +45,7 @@ const SEED_USERS = [
   {
     name:            'Aryan Singh',
     email:           'aryan.singh@gmail.com',
-    password:        'Password@123',
+    password:        SEED_PASSWORD,
     role:            'developer',
     bio:             'Backend engineer focused on scalable systems.',
     skills:          ['Java', 'Spring Boot', 'MySQL', 'System Design'],
@@ -54,7 +57,7 @@ const SEED_USERS = [
   {
     name:            'Rahul Verma',
     email:           'rahul.verma@gmail.com',
-    password:        'Password@123',
+    password:        SEED_PASSWORD,
     role:            'developer',
     bio:             'Security researcher and cloud enthusiast.',
     skills:          ['Cyber Security', 'Networking', 'Linux', 'Cloud Security'],
@@ -66,7 +69,7 @@ const SEED_USERS = [
   {
     name:            'Priya Mehta',
     email:           'priya.mehta@gmail.com',
-    password:        'Password@123',
+    password:        SEED_PASSWORD,
     role:            'other',
     bio:             'Product strategist interested in startup ecosystems.',
     skills:          ['Product Management', 'Business Analysis', 'UI Research', 'Agile'],

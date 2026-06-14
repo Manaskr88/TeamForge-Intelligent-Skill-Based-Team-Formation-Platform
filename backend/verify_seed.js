@@ -14,7 +14,7 @@ const ACCOUNTS = [
   'rahul.verma@gmail.com',
   'priya.mehta@gmail.com',
 ];
-const PASSWORD = 'Password@123';
+const PASSWORD = process.env.SEED_PASSWORD || 'Password@123';
 
 function post(path, body) {
   return new Promise((resolve) => {

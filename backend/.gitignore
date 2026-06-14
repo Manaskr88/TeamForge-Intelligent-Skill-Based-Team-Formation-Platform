@@ -1,25 +1,25 @@
+# Environment variables — NEVER commit
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+
 # Dependencies
 node_modules/
-server/node_modules/
-client/node_modules/
 
-# Environment variables
-.env
-server/.env
-client/.env
-# Build output
-client/dist/
-client/build/
-
-# Uploads (temporary files)
-server/uploads/*
-!server/uploads/.gitkeep
+# Uploads — stored on Cloudinary in production
+uploads/profile-images/
+uploads/*.jpg
+uploads/*.png
+uploads/*.webp
+uploads/*.jpeg
 
 # Logs
 *.log
 npm-debug.log*
 
-# OS files
+# OS
 .DS_Store
 Thumbs.db
 

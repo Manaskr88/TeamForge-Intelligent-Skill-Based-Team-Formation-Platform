@@ -1,0 +1,48 @@
+# ── Environment variables — NEVER commit these ──
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+*.env
+
+# ── Dependencies ──
+node_modules/
+.pnp
+.pnp.js
+
+# ── Build output ──
+dist/
+build/
+.vite/
+
+# ── Uploads (user files stored locally in dev) ──
+backend/uploads/profile-images/
+backend/uploads/*.jpg
+backend/uploads/*.png
+backend/uploads/*.webp
+backend/uploads/*.jpeg
+
+# ── Logs ──
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# ── OS ──
+.DS_Store
+Thumbs.db
+
+# ── IDE ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Testing ──
+coverage/
+
+# ── Misc ──
+*.local
+.eslintcache
