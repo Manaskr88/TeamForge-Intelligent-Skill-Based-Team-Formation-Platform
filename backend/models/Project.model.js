@@ -60,6 +60,24 @@ const projectSchema = new mongoose.Schema({
       type: String,
       enum: ['pending', 'accepted', 'rejected'],
       default: 'pending'
+    },
+    respondedAt: {
+      type: Date,
+    }
+  }],
+  // Accepted members (project participants)
+  members: [{
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    role: {
+      type: String,
+      default: 'member'
+    },
+    joinedAt: {
+      type: Date,
+      default: Date.now
     }
   }],
   tags: [{
