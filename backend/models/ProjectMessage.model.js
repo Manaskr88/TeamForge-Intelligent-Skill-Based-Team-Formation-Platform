@@ -12,13 +12,10 @@ const projectMessageSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
-  senderName:   { type: String, required: true },
-  senderAvatar: { type: String, default: '' },
-  content: {
+  message: {
     type: String,
     required: true,
     trim: true,
-    maxlength: [2000, 'Message too long'],
   },
 }, { timestamps: true });
 

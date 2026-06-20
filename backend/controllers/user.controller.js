@@ -94,7 +94,8 @@ const getDashboardStats = async (req, res) => {
     const projectQuery = {
       $or: [
         { owner: userId },
-        { 'applicants.user': userId },
+        { 'joinRequests.user': userId },
+        { 'applicants.user': userId }, // Keep applicants.user check for backward compatibility with old seeds
         { _id: { $in: teamProjectIds } },
       ]
     };

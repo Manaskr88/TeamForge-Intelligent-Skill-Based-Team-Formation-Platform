@@ -64,13 +64,20 @@ export const teamAPI = {
 
 // ── Projects ──────────────────────────────────────────
 export const projectAPI = {
-  getAll:  (params) => api.get('/projects', { params }),
-  getMy:   ()       => api.get('/projects/my'),
-  getById: (id)     => api.get(`/projects/${id}`),
-  create:  (data)   => api.post('/projects', data),
-  update:  (id, d)  => api.put(`/projects/${id}`, d),
-  delete:  (id)     => api.delete(`/projects/${id}`),
-  apply:   (id)     => api.post(`/projects/${id}/apply`),
+  getAll:            (params) => api.get('/projects', { params }),
+  getMy:             ()       => api.get('/projects/my'),
+  getById:           (id)     => api.get(`/projects/${id}`),
+  create:            (data)   => api.post('/projects', data),
+  update:            (id, d)  => api.put(`/projects/${id}`, d),
+  delete:            (id)     => api.delete(`/projects/${id}`),
+  apply:             (id)     => api.post(`/projects/${id}/apply`),
+  requestJoin:       (id)     => api.post(`/projects/${id}/request-join`),
+  getJoinRequests:   (id)     => api.get(`/projects/${id}/join-requests`),
+  acceptJoinRequest: (id, rid) => api.patch(`/projects/${id}/join-requests/${rid}/accept`),
+  rejectJoinRequest: (id, rid) => api.patch(`/projects/${id}/join-requests/${rid}/reject`),
+  getMembers:        (id)     => api.get(`/projects/${id}/members`),
+  getChatMessages:   (id)     => api.get(`/projects/${id}/chat`),
+  sendChatMessage:   (id, msg) => api.post(`/projects/${id}/chat`, msg),
 }
 
 // ── Invitations ───────────────────────────────────────

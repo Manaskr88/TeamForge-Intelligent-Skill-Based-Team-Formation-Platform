@@ -138,6 +138,72 @@ io.on('connection', (socket) => {
     socket.to(`team:${teamId}`).emit('user_stopped_typing', { userId, teamId });
   });
 
+  // ── Project Chat ──────────────────────────────────────────────────────────
+  socket.on('join_project_room', async (projectId) => {
+    try {
+      const Project = require('./models/Project.model');
+      const project = await Project.findById(projectId).select('owner members');
+      if (!project) return socket.emit('error', { message: 'Project not found' });
+
+      const isOwner = project.owner.toString() === userId;
+      const isMember = project.members.some(m => m.user.toString() === userId);
+      if (!isOwner && !isMember) {
+        return socket.emit('error', { message: 'Not authorized to join this project chat' });
+      }
+
+      socket.join(`project:${projectId}`);
+      socket.emit('joined_project_room', { projectId });
+    } catch (err) {
+      console.error('join_project_room error:', err.message);
+      socket.emit('error', { message: 'Failed to join project room' });
+    }
+  });
+
+  socket.on('send_project_message', async ({ projectId, message }) => {
+    try {
+      if (!message?.trim()) return;
+
+      const [Project, ProjectMessage, User] = [
+        require('./models/Project.model'),
+        require('./models/ProjectMessage.model'),
+        require('./models/User.model'),
+      ];
+
+      const [project, user] = await Promise.all([
+        Project.findById(projectId).select('owner members'),
+        User.findById(userId).select('name avatar'),
+      ]);
+
+      if (!project || !user) return socket.emit('error', { message: 'Project or user not found' });
+
+      const isOwner = project.owner.toString() === userId;
+      const isMember = project.members.some(m => m.user.toString() === userId);
+      if (!isOwner && !isMember) {
+        return socket.emit('error', { message: 'Not authorized to send project messages' });
+      }
+
+      const chatMessage = await ProjectMessage.create({
+        projectId,
+        sender: userId,
+        message: message.trim(),
+      });
+
+      const msgObj = chatMessage.toObject();
+      msgObj.sender = {
+        _id: user._id,
+        name: user.name,
+        avatar: user.avatar || '',
+        profileImage: user.avatar || '',
+      };
+
+      // Broadcast to project room
+      io.to(`project:${projectId}`).emit('receive_project_message', msgObj);
+    } catch (err) {
+      console.error('send_project_message error:', err.message);
+      socket.emit('error', { message: 'Failed to send message' });
+    }
+  });
+
   // ── Mark seen ─────────────────────────────────────────────────────────────
   socket.on('mark_seen', async ({ teamId }) => {
     try {
