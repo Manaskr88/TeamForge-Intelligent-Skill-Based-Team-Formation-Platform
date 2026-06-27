@@ -108,9 +108,9 @@ export default function ExplorePage() {
 
                   {u.bio && <p className="text-xs text-slate-500 line-clamp-2 mb-3">{u.bio}</p>}
 
-                  <div className="flex flex-wrap gap-1 mb-3 flex-1">
+                  <div className="flex flex-wrap gap-1 mb-3">
                     {u.skills?.slice(0, 5).map(s => <SkillTag key={s} skill={s} />)}
-                    {u.skills?.length > 5 && <span className="text-xs text-slate-400">+{u.skills.length - 5}</span>}
+                    {u.skills?.length > 5 && <span className="text-xs text-slate-400 self-center">+{u.skills.length - 5}</span>}
                   </div>
 
                   <div className="flex items-center gap-2 pt-3 border-t border-slate-100">

@@ -87,6 +87,9 @@
     background: #eef2ff;
     color: #1e293b;
     border: 1px solid #c7d2fe;
+    align-self: flex-start;   /* prevents stretching inside flex columns */
+    height: fit-content;      /* never grow taller than content */
+    white-space: nowrap;      /* keep text on one line */
   }
 
   /* ── Typography helpers ────────────────────────── */

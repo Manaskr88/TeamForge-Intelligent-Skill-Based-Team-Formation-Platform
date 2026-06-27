@@ -6,15 +6,10 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL
 
 let socketInstance = null
 
-/**
- * Get (or create) the singleton socket instance.
- * Reuses existing connected socket; creates new one if disconnected.
- */
 export function getSocket(token) {
   if (socketInstance && socketInstance.connected) {
     return socketInstance
   }
-  // Disconnect stale instance before creating new one
   if (socketInstance) {
     socketInstance.disconnect()
     socketInstance = null
@@ -28,28 +23,18 @@ export function getSocket(token) {
     reconnectionDelayMax: 5000,
   })
 
-  socketInstance.on('connect', () =>
-    console.log('🔌 Socket connected:', socketInstance.id)
-  )
-  socketInstance.on('connect_error', (err) =>
-    console.warn('⚠️ Socket connect error:', err.message)
-  )
-  socketInstance.on('disconnect', (reason) =>
-    console.log('🔌 Socket disconnected:', reason)
-  )
+  // No console logs — keep the browser console clean in production
+  socketInstance.on('connect_error', (err) => {
+    if (import.meta.env.DEV) console.warn('Socket error:', err.message)
+  })
 
   return socketInstance
 }
 
-/**
- * Disconnect and destroy the singleton socket.
- * Call on logout.
- */
 export function disconnectSocket() {
   if (socketInstance) {
     socketInstance.disconnect()
     socketInstance = null
-    console.log('🔌 Socket disconnected (logout)')
   }
 }
 

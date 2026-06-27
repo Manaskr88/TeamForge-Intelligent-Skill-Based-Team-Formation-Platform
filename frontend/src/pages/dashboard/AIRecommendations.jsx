@@ -108,9 +108,9 @@ function AICard({ rec, mode, index, onInvite }) {
 
         {/* Skills */}
         {u.skills?.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3 flex-1">
+          <div className="flex flex-wrap gap-1 mb-3">
             {u.skills.slice(0, 4).map(s => <SkillTag key={s} skill={s} />)}
-            {u.skills.length > 4 && <span className="text-xs text-slate-400">+{u.skills.length - 4}</span>}
+            {u.skills.length > 4 && <span className="text-xs text-slate-400 self-center">+{u.skills.length - 4}</span>}
           </div>
         )}
 
