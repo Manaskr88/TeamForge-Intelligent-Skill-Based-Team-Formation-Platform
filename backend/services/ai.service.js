@@ -13,7 +13,7 @@ function getGroq() {
   return groqClient;
 }
 
-const MODEL = 'llama-3.1-8b-instant'; // replaces decommissioned llama3-8b-8192
+const MODEL = 'llama-3.3-70b-versatile'; // upgraded from deprecated llama-3.1-8b-instant
 
 /**
  * Core chat completion — all AI features funnel through here.
