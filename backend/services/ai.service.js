@@ -13,12 +13,12 @@ function getGroq() {
   return groqClient;
 }
 
-const MODEL = 'openai/gpt-oss-20b'; // Groq production model (gpt-oss-20b supports json_object mode)
+const MODEL = 'meta-llama/llama-4-maverick-17b-128e-instruct'; // Groq free tier, high TPM, reliable JSON
 
 /**
  * Core chat completion for plain text responses (chat assistant).
  */
-async function chat(systemPrompt, userMessage, maxTokens = 1024) {
+async function chat(systemPrompt, userMessage, maxTokens = 800) {
   const groq = getGroq();
   const completion = await groq.chat.completions.create({
     model: MODEL,
@@ -36,12 +36,12 @@ async function chat(systemPrompt, userMessage, maxTokens = 1024) {
  * JSON-specific completion — forces response_format: json_object.
  * Use this for all features that need parseable JSON back.
  */
-async function chatJSON(systemPrompt, userMessage, maxTokens = 1500) {
+async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
   const groq = getGroq();
   const completion = await groq.chat.completions.create({
     model: MODEL,
     messages: [
-      { role: 'system', content: systemPrompt + '\n\nYou MUST respond with only valid JSON. No explanation, no markdown, no code fences.' },
+      { role: 'system', content: systemPrompt + '\nRespond with valid JSON only.' },
       { role: 'user',   content: userMessage  },
     ],
     temperature: 0.6,
@@ -89,126 +89,97 @@ Use bullet points, code blocks, and headers to structure longer answers.`;
 
 // ── Feature 2: Hackathon Idea Generator ──────────────────────────────────────
 async function generateHackathonIdea({ domain, techStack, teamSize, difficulty, theme, problemArea }) {
-  const system = `You are an expert hackathon mentor and startup idea generator.
-Generate a complete, innovative, and practical hackathon project idea.`;
+  const system = `You are a hackathon mentor. Generate creative project ideas and return JSON.`;
 
-  const userMsg = `Generate a hackathon project idea with these parameters:
-Domain: ${domain}
-Tech Stack: ${techStack}
-Team Size: ${teamSize}
-Difficulty: ${difficulty}
-Theme: ${theme}
-Problem Area: ${problemArea}
+  const userMsg = `Generate a hackathon idea:
+Domain: ${domain} | Tech: ${techStack} | Size: ${teamSize} | Difficulty: ${difficulty} | Theme: ${theme}
+Problem: ${problemArea}
 
-Respond with this JSON structure:
+Return JSON:
 {
   "projectName": "string",
   "tagline": "string",
   "problemStatement": "string",
   "solution": "string",
-  "coreFeatures": ["feature1", "feature2", "feature3", "feature4", "feature5"],
-  "techStack": ["tech1", "tech2", "tech3"],
+  "coreFeatures": ["f1","f2","f3","f4","f5"],
+  "techStack": ["t1","t2","t3"],
   "uniqueSellingPoint": "string",
   "monetizationIdea": "string",
   "futureScope": "string",
   "implementationRoadmap": [
-    { "phase": "Phase 1", "duration": "Day 1", "tasks": ["task1", "task2"] },
-    { "phase": "Phase 2", "duration": "Day 2", "tasks": ["task1", "task2"] },
-    { "phase": "Phase 3", "duration": "Day 3", "tasks": ["task1", "task2"] }
+    {"phase":"Phase 1","duration":"Day 1","tasks":["t1","t2"]},
+    {"phase":"Phase 2","duration":"Day 2","tasks":["t1","t2"]},
+    {"phase":"Phase 3","duration":"Day 3","tasks":["t1","t2"]}
   ],
   "teamRoles": [
-    { "role": "Frontend Developer", "responsibilities": "string" },
-    { "role": "Backend Developer", "responsibilities": "string" },
-    { "role": "UI/UX Designer", "responsibilities": "string" }
+    {"role":"Frontend Developer","responsibilities":"string"},
+    {"role":"Backend Developer","responsibilities":"string"},
+    {"role":"UI/UX Designer","responsibilities":"string"}
   ],
   "estimatedImpact": "string",
   "difficulty": "${difficulty}"
 }`;
 
-  const raw = await chatJSON(system, userMsg, 1500);
+  const raw = await chatJSON(system, userMsg, 1000);
   return parseJSON(raw);
 }
 
 // ── Feature 3: Skill Gap Analyzer ────────────────────────────────────────────
 async function analyzeSkillGap({ currentSkills, targetRole, experienceLevel, careerPath }) {
-  const system = `You are a senior tech career coach and skills assessment expert.
-Analyze skill gaps and provide actionable learning roadmaps.`;
+  const system = `You are a tech career coach. Analyze skill gaps and return JSON.`;
 
-  const userMsg = `Analyze the skill gap for this developer:
-Current Skills: ${currentSkills?.join(', ') || 'none listed'}
-Target Role: ${targetRole}
-Current Experience Level: ${experienceLevel}
-Career Path: ${careerPath}
+  const userMsg = `Skill gap analysis:
+Skills: ${currentSkills?.slice(0,8).join(', ') || 'none'}
+Target: ${targetRole} | Level: ${experienceLevel}
 
-Respond with this JSON structure:
+Return JSON:
 {
   "targetRole": "${targetRole}",
   "overallReadiness": 45,
-  "currentStrengths": ["strength1", "strength2", "strength3"],
-  "missingSkills": [
-    { "skill": "string", "priority": "high", "reason": "string" }
-  ],
+  "currentStrengths": ["s1","s2","s3"],
+  "missingSkills": [{"skill":"string","priority":"high","reason":"string"}],
   "learningRoadmap": [
-    { "week": "Week 1-2", "focus": "string", "resources": ["resource1", "resource2"], "goal": "string" },
-    { "week": "Week 3-4", "focus": "string", "resources": ["resource1", "resource2"], "goal": "string" },
-    { "week": "Week 5-8", "focus": "string", "resources": ["resource1", "resource2"], "goal": "string" },
-    { "week": "Week 9-12", "focus": "string", "resources": ["resource1", "resource2"], "goal": "string" }
+    {"week":"Week 1-2","focus":"string","resources":["r1","r2"],"goal":"string"},
+    {"week":"Week 3-4","focus":"string","resources":["r1","r2"],"goal":"string"},
+    {"week":"Week 5-8","focus":"string","resources":["r1","r2"],"goal":"string"},
+    {"week":"Week 9-12","focus":"string","resources":["r1","r2"],"goal":"string"}
   ],
-  "recommendedProjects": [
-    { "name": "string", "description": "string", "skills": ["skill1", "skill2"] }
-  ],
-  "interviewTopics": ["topic1", "topic2", "topic3", "topic4", "topic5"],
-  "certifications": [
-    { "name": "string", "provider": "string", "priority": "high" }
-  ],
-  "prioritySkills": ["skill1", "skill2", "skill3"],
+  "recommendedProjects": [{"name":"string","description":"string","skills":["s1","s2"]}],
+  "interviewTopics": ["t1","t2","t3","t4","t5"],
+  "certifications": [{"name":"string","provider":"string","priority":"high"}],
+  "prioritySkills": ["s1","s2","s3"],
   "timelineToJobReady": "string",
   "salaryRange": "string",
   "jobMarketDemand": "high"
 }`;
 
-  const raw = await chatJSON(system, userMsg, 1500);
+  const raw = await chatJSON(system, userMsg, 1000);
   return parseJSON(raw);
 }
 
 // ── Feature 4: AI Team Recommendations ───────────────────────────────────────
 async function aiTeamRecommendations({ currentUser, candidates }) {
-  const system = `You are an AI team formation expert for a developer collaboration platform.
-Analyze developer profiles and determine team compatibility.`;
+  const system = `You are a team formation AI. Analyze developer compatibility and return JSON.`;
 
-  const top = candidates.slice(0, 8);
+  // Cap at 5 to keep prompt small
+  const top = candidates.slice(0, 5);
 
-  const userMsg = `Analyze team compatibility between the current user and candidates.
+  const userMsg = `Rate compatibility between user and each candidate (0-100).
 
-Current User:
-- Name: ${currentUser.name}
-- Skills: ${currentUser.skills?.join(', ') || 'none'}
-- Experience: ${currentUser.experienceLevel}
-- Availability: ${currentUser.availability}
-- Role: ${currentUser.role}
+User: ${currentUser.name} | Skills: ${currentUser.skills?.slice(0,5).join(', ') || 'none'} | Exp: ${currentUser.experienceLevel}
 
 Candidates:
-${top.map((c, i) => `${i + 1}. ${c.name} | Skills: ${c.skills?.join(', ') || 'none'} | Exp: ${c.experienceLevel} | Avail: ${c.availability} | Role: ${c.role}`).join('\n')}
+${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0,5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
 
-Respond with a JSON object containing a "results" array (one object per candidate, same order):
+Return JSON:
 {
   "results": [
-    {
-      "candidateIndex": 0,
-      "compatibilityScore": 85,
-      "matchingSkills": ["skill1", "skill2"],
-      "complementarySkills": ["skill3", "skill4"],
-      "suggestedRole": "string",
-      "whyGoodMatch": "string",
-      "collaborationStyle": "string",
-      "riskFactors": null
-    }
+    { "candidateIndex": 0, "compatibilityScore": 85, "matchingSkills": ["skill1"], "complementarySkills": ["skill2"], "suggestedRole": "string", "whyGoodMatch": "one sentence" }
   ]
 }`;
 
-  const raw = await chatJSON(system, userMsg, 1500);
+  const raw = await chatJSON(system, userMsg, 800);
   const parsed = parseJSON(raw);
-  // Support both { results: [...] } and direct array
   const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || []);
 
   return top.map((candidate, i) => {
@@ -230,37 +201,24 @@ Respond with a JSON object containing a "results" array (one object per candidat
 
 // ── Feature 5: AI Team-Mode Recommendations ──────────────────────────────────
 async function aiTeamModeRecommendations({ teamName, requiredSkills, missingSkills, combinedMemberSkills, candidates, projectType }) {
-  const system = `You are an expert team formation AI for a developer collaboration platform called TeamForge.
-Your job is to analyze which candidates best COMPLETE a team by filling skill gaps.`;
+  const system = `You are a team formation AI. Find candidates who fill missing skill gaps and return JSON.`;
 
-  const top = candidates.slice(0, 8);
+  const top = candidates.slice(0, 5);
 
-  const userMsg = `Analyze which candidates best complete this team's missing skills.
-
-Team: "${teamName}" (${projectType || 'software project'})
-Required Skills: ${requiredSkills.join(', ') || 'not specified'}
-Current Team Skills: ${combinedMemberSkills.join(', ') || 'none'}
-Missing Skills: ${missingSkills.join(', ') || 'none'}
+  const userMsg = `Team "${teamName}" needs: ${missingSkills.slice(0,5).join(', ') || 'general skills'}
+Has: ${combinedMemberSkills.slice(0,5).join(', ') || 'none'}
 
 Candidates:
-${top.map((c, i) => `${i + 1}. ${c.name} | Skills: ${c.skills?.join(', ') || 'none'} | Exp: ${c.experienceLevel} | Avail: ${c.availability} | Role: ${c.role}`).join('\n')}
+${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0,5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
 
-Respond with a JSON object containing a "results" array (one object per candidate, same order):
+Return JSON:
 {
   "results": [
-    {
-      "candidateIndex": 0,
-      "compatibilityScore": 88,
-      "skillsFulfilled": ["Express.js", "JavaScript"],
-      "suggestedRole": "Backend Developer",
-      "whyGoodMatch": "string explaining why this person completes the team",
-      "teamImpact": "string describing how they improve team balance",
-      "riskFactors": null
-    }
+    { "candidateIndex": 0, "compatibilityScore": 88, "skillsFulfilled": ["skill1"], "suggestedRole": "string", "whyGoodMatch": "one sentence", "teamImpact": "one sentence" }
   ]
 }`;
 
-  const raw = await chatJSON(system, userMsg, 1500);
+  const raw = await chatJSON(system, userMsg, 800);
   const parsed = parseJSON(raw);
   const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || []);
 

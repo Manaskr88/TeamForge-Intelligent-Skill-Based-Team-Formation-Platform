@@ -174,7 +174,7 @@ const aiTeamRecommendations = async (req, res) => {
     // Fetch candidates (exclude self)
     const candidates = await User.find({ _id: { $ne: req.user._id } })
       .select('name skills experienceLevel availability role bio avatar isOnline')
-      .limit(30)
+      .limit(10)
       .lean();
 
     if (candidates.length === 0) {
@@ -238,17 +238,17 @@ const aiTeamAnalysis = async (req, res) => {
     if (missingSkills.length > 0) {
       candidates = await User.find({ _id: { $nin: memberIds }, skills: { $in: missingSkills } })
         .select('name skills experienceLevel availability role bio avatar isOnline')
-        .limit(25).lean();
-      if (candidates.length < 4) {
+        .limit(10).lean();
+      if (candidates.length < 3) {
         const extra = await User.find({ _id: { $nin: [...memberIds, ...candidates.map(c => c._id.toString())] } })
           .select('name skills experienceLevel availability role bio avatar isOnline')
-          .limit(15).lean();
+          .limit(5).lean();
         candidates = [...candidates, ...extra];
       }
     } else {
       candidates = await User.find({ _id: { $nin: memberIds } })
         .select('name skills experienceLevel availability role bio avatar isOnline')
-        .limit(25).lean();
+        .limit(10).lean();
     }
 
     if (candidates.length === 0) {
