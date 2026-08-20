@@ -80,10 +80,17 @@ export default function ProjectChat({ projectId, projectName }) {
 
     // Listen for new messages
     const onReceiveMessage = (msg) => {
-      if (msg.projectId === projectId) {
+      if (String(msg.projectId) === String(projectId)) {
         setMessages(prev => {
-          // Prevent duplicates
+          // Prevent exact duplicates by real _id
           if (prev.some(m => m._id === msg._id)) return prev
+          // Replace the latest optimistic message from this user with the real message
+          const optIdx = prev.findLastIndex(m => m._optimistic && m.sender?._id === msg.sender?._id)
+          if (optIdx !== -1) {
+            const next = [...prev]
+            next[optIdx] = msg
+            return next
+          }
           return [...prev, msg]
         })
         setTimeout(() => scrollToBottom(true), 30)
@@ -103,11 +110,13 @@ export default function ProjectChat({ projectId, projectName }) {
 
     setInput('')
     setSending(true)
-    
+
+    const optimisticId = `opt-${Date.now()}`
+
     try {
       // Optimistic message update locally
       const optimisticMsg = {
-        _id: `opt-${Date.now()}`,
+        _id: optimisticId,
         projectId,
         sender: {
           _id: user._id,

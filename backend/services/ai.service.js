@@ -13,22 +13,18 @@ function getGroq() {
   return groqClient;
 }
 
-const MODEL = 'llama-3.3-70b-versatile'; // upgraded from deprecated llama-3.1-8b-instant
+const MODEL = 'openai/gpt-oss-20b'; // Groq production model (gpt-oss-20b supports json_object mode)
 
 /**
- * Core chat completion — all AI features funnel through here.
- * @param {string} systemPrompt
- * @param {string} userMessage
- * @param {number} maxTokens
- * @returns {Promise<string>}
+ * Core chat completion for plain text responses (chat assistant).
  */
 async function chat(systemPrompt, userMessage, maxTokens = 1024) {
   const groq = getGroq();
   const completion = await groq.chat.completions.create({
     model: MODEL,
     messages: [
-      { role: 'system',  content: systemPrompt },
-      { role: 'user',    content: userMessage  },
+      { role: 'system', content: systemPrompt },
+      { role: 'user',   content: userMessage  },
     ],
     temperature: 0.7,
     max_tokens:  maxTokens,
@@ -37,11 +33,37 @@ async function chat(systemPrompt, userMessage, maxTokens = 1024) {
 }
 
 /**
- * Parse JSON from AI response — strips markdown fences if present.
+ * JSON-specific completion — forces response_format: json_object.
+ * Use this for all features that need parseable JSON back.
+ */
+async function chatJSON(systemPrompt, userMessage, maxTokens = 1500) {
+  const groq = getGroq();
+  const completion = await groq.chat.completions.create({
+    model: MODEL,
+    messages: [
+      { role: 'system', content: systemPrompt + '\n\nYou MUST respond with only valid JSON. No explanation, no markdown, no code fences.' },
+      { role: 'user',   content: userMessage  },
+    ],
+    temperature: 0.6,
+    max_tokens:  maxTokens,
+    response_format: { type: 'json_object' },
+  });
+  return completion.choices[0]?.message?.content?.trim() || '';
+}
+
+/**
+ * Parse JSON from AI response — strips markdown fences and reasoning tags if present.
+ * openai/gpt-oss-20b (reasoning model) may emit <think>...</think> before the JSON.
  */
 function parseJSON(text) {
-  const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  return JSON.parse(cleaned);
+  // Strip <think>...</think> blocks (reasoning model output)
+  let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
+  // Strip markdown fences
+  cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  // Extract the first valid JSON object or array
+  const objMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
+  if (objMatch) cleaned = objMatch[1]
+  return JSON.parse(cleaned)
 }
 
 // ── Feature 1: Team Chat AI Assistant ────────────────────────────────────────
@@ -68,8 +90,7 @@ Use bullet points, code blocks, and headers to structure longer answers.`;
 // ── Feature 2: Hackathon Idea Generator ──────────────────────────────────────
 async function generateHackathonIdea({ domain, techStack, teamSize, difficulty, theme, problemArea }) {
   const system = `You are an expert hackathon mentor and startup idea generator.
-Generate a complete, innovative, and practical hackathon project idea.
-Always respond with ONLY valid JSON — no markdown fences, no extra text.`;
+Generate a complete, innovative, and practical hackathon project idea.`;
 
   const userMsg = `Generate a hackathon project idea with these parameters:
 Domain: ${domain}
@@ -79,7 +100,7 @@ Difficulty: ${difficulty}
 Theme: ${theme}
 Problem Area: ${problemArea}
 
-Return ONLY this JSON structure (no markdown, no extra text):
+Respond with this JSON structure:
 {
   "projectName": "string",
   "tagline": "string",
@@ -104,15 +125,14 @@ Return ONLY this JSON structure (no markdown, no extra text):
   "difficulty": "${difficulty}"
 }`;
 
-  const raw = await chat(system, userMsg, 1500);
+  const raw = await chatJSON(system, userMsg, 1500);
   return parseJSON(raw);
 }
 
 // ── Feature 3: Skill Gap Analyzer ────────────────────────────────────────────
 async function analyzeSkillGap({ currentSkills, targetRole, experienceLevel, careerPath }) {
   const system = `You are a senior tech career coach and skills assessment expert.
-Analyze skill gaps and provide actionable learning roadmaps.
-Always respond with ONLY valid JSON — no markdown fences, no extra text.`;
+Analyze skill gaps and provide actionable learning roadmaps.`;
 
   const userMsg = `Analyze the skill gap for this developer:
 Current Skills: ${currentSkills?.join(', ') || 'none listed'}
@@ -120,13 +140,13 @@ Target Role: ${targetRole}
 Current Experience Level: ${experienceLevel}
 Career Path: ${careerPath}
 
-Return ONLY this JSON structure:
+Respond with this JSON structure:
 {
   "targetRole": "${targetRole}",
   "overallReadiness": 45,
   "currentStrengths": ["strength1", "strength2", "strength3"],
   "missingSkills": [
-    { "skill": "string", "priority": "high|medium|low", "reason": "string" }
+    { "skill": "string", "priority": "high", "reason": "string" }
   ],
   "learningRoadmap": [
     { "week": "Week 1-2", "focus": "string", "resources": ["resource1", "resource2"], "goal": "string" },
@@ -139,25 +159,23 @@ Return ONLY this JSON structure:
   ],
   "interviewTopics": ["topic1", "topic2", "topic3", "topic4", "topic5"],
   "certifications": [
-    { "name": "string", "provider": "string", "priority": "high|medium" }
+    { "name": "string", "provider": "string", "priority": "high" }
   ],
   "prioritySkills": ["skill1", "skill2", "skill3"],
   "timelineToJobReady": "string",
   "salaryRange": "string",
-  "jobMarketDemand": "high|medium|low"
+  "jobMarketDemand": "high"
 }`;
 
-  const raw = await chat(system, userMsg, 1500);
+  const raw = await chatJSON(system, userMsg, 1500);
   return parseJSON(raw);
 }
 
 // ── Feature 4: AI Team Recommendations ───────────────────────────────────────
 async function aiTeamRecommendations({ currentUser, candidates }) {
   const system = `You are an AI team formation expert for a developer collaboration platform.
-Analyze developer profiles and determine team compatibility.
-Always respond with ONLY valid JSON — no markdown fences, no extra text.`;
+Analyze developer profiles and determine team compatibility.`;
 
-  // Limit candidates to avoid token overflow
   const top = candidates.slice(0, 8);
 
   const userMsg = `Analyze team compatibility between the current user and candidates.
@@ -172,24 +190,27 @@ Current User:
 Candidates:
 ${top.map((c, i) => `${i + 1}. ${c.name} | Skills: ${c.skills?.join(', ') || 'none'} | Exp: ${c.experienceLevel} | Avail: ${c.availability} | Role: ${c.role}`).join('\n')}
 
-Return ONLY this JSON array (one object per candidate, same order):
-[
-  {
-    "candidateIndex": 0,
-    "compatibilityScore": 85,
-    "matchingSkills": ["skill1", "skill2"],
-    "complementarySkills": ["skill3", "skill4"],
-    "suggestedRole": "string",
-    "whyGoodMatch": "string",
-    "collaborationStyle": "string",
-    "riskFactors": "string or null"
-  }
-]`;
+Respond with a JSON object containing a "results" array (one object per candidate, same order):
+{
+  "results": [
+    {
+      "candidateIndex": 0,
+      "compatibilityScore": 85,
+      "matchingSkills": ["skill1", "skill2"],
+      "complementarySkills": ["skill3", "skill4"],
+      "suggestedRole": "string",
+      "whyGoodMatch": "string",
+      "collaborationStyle": "string",
+      "riskFactors": null
+    }
+  ]
+}`;
 
-  const raw = await chat(system, userMsg, 1200);
-  const aiResults = parseJSON(raw);
+  const raw = await chatJSON(system, userMsg, 1500);
+  const parsed = parseJSON(raw);
+  // Support both { results: [...] } and direct array
+  const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || []);
 
-  // Merge AI insights with candidate data
   return top.map((candidate, i) => {
     const ai = aiResults.find(r => r.candidateIndex === i) || aiResults[i] || {};
     return {
@@ -210,8 +231,7 @@ Return ONLY this JSON array (one object per candidate, same order):
 // ── Feature 5: AI Team-Mode Recommendations ──────────────────────────────────
 async function aiTeamModeRecommendations({ teamName, requiredSkills, missingSkills, combinedMemberSkills, candidates, projectType }) {
   const system = `You are an expert team formation AI for a developer collaboration platform called TeamForge.
-Your job is to analyze which candidates best COMPLETE a team by filling skill gaps.
-Always respond with ONLY valid JSON — no markdown fences, no extra text.`;
+Your job is to analyze which candidates best COMPLETE a team by filling skill gaps.`;
 
   const top = candidates.slice(0, 8);
 
@@ -225,21 +245,24 @@ Missing Skills: ${missingSkills.join(', ') || 'none'}
 Candidates:
 ${top.map((c, i) => `${i + 1}. ${c.name} | Skills: ${c.skills?.join(', ') || 'none'} | Exp: ${c.experienceLevel} | Avail: ${c.availability} | Role: ${c.role}`).join('\n')}
 
-Return ONLY this JSON array (one object per candidate, same order):
-[
-  {
-    "candidateIndex": 0,
-    "compatibilityScore": 88,
-    "skillsFulfilled": ["Express.js", "JavaScript"],
-    "suggestedRole": "Backend Developer",
-    "whyGoodMatch": "string explaining why this person completes the team",
-    "teamImpact": "string describing how they improve team balance",
-    "riskFactors": "string or null"
-  }
-]`;
+Respond with a JSON object containing a "results" array (one object per candidate, same order):
+{
+  "results": [
+    {
+      "candidateIndex": 0,
+      "compatibilityScore": 88,
+      "skillsFulfilled": ["Express.js", "JavaScript"],
+      "suggestedRole": "Backend Developer",
+      "whyGoodMatch": "string explaining why this person completes the team",
+      "teamImpact": "string describing how they improve team balance",
+      "riskFactors": null
+    }
+  ]
+}`;
 
-  const raw = await chat(system, userMsg, 1200);
-  const aiResults = parseJSON(raw);
+  const raw = await chatJSON(system, userMsg, 1500);
+  const parsed = parseJSON(raw);
+  const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || []);
 
   return top.map((candidate, i) => {
     const ai = aiResults.find(r => r.candidateIndex === i) || aiResults[i] || {};
@@ -262,40 +285,30 @@ Return ONLY this JSON array (one object per candidate, same order):
 async function extractProjectDetails({ problemArea }) {
   const system = `You are a smart project details extractor for a hackathon platform.
 Extract structured project information from a natural language description.
-Always respond with ONLY valid JSON — no markdown fences, no extra text.
 If a field cannot be determined, use sensible defaults.`;
 
   const userMsg = `Extract project details from this description:
 "${problemArea}"
 
-Return ONLY this JSON (no markdown, no extra text):
+Respond with this JSON:
 {
   "domain": "string (e.g. Healthcare, Education, Fintech, Productivity, E-commerce, Social Impact, Environment, Cybersecurity, AI/ML, Blockchain, Gaming, Travel, Food Tech, General)",
   "techStack": ["tech1", "tech2", "tech3"],
   "teamSize": "string (e.g. 3-4, 5-6, 1-2)",
-  "difficulty": "beginner|intermediate|advanced",
+  "difficulty": "beginner",
   "theme": "string (e.g. HealthTech, EdTech, FinTech, Open Innovation, AI-First, Climate Tech, Social Good, Smart Cities, Web3, Future of Work)"
 }
 
 Rules:
-- techStack: extract any technologies mentioned (React, Node.js, Python, MongoDB, etc). If MERN mentioned, expand to ["React", "Node.js", "Express.js", "MongoDB"]
-- teamSize: if a number like "4 members" or "team of 5", convert to range like "3-4" or "5-6"  
-- difficulty: estimate based on complexity of what's described
-- domain: pick the closest from the list
-- theme: pick the closest from the list based on domain`;
+- techStack: extract any technologies mentioned. If MERN mentioned, expand to ["React", "Node.js", "Express.js", "MongoDB"]
+- teamSize: convert "4 members" to "3-4", "team of 5" to "5-6"
+- difficulty must be one of: beginner, intermediate, advanced`;
 
-  const raw = await chat(system, userMsg, 400);
+  const raw = await chatJSON(system, userMsg, 400);
   try {
     return parseJSON(raw);
   } catch {
-    // Fallback defaults if parsing fails
-    return {
-      domain:     'General',
-      techStack:  [],
-      teamSize:   '3-4',
-      difficulty: 'intermediate',
-      theme:      'Open Innovation',
-    };
+    return { domain: 'General', techStack: [], teamSize: '3-4', difficulty: 'intermediate', theme: 'Open Innovation' };
   }
 }
 

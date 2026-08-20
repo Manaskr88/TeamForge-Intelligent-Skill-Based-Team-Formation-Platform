@@ -197,14 +197,18 @@ const aiTeamRecommendations = async (req, res) => {
       recommendations: recommendations.slice(0, parseInt(limit)),
     });
   } catch (err) {
-    console.error('AI recommendations error:', err.message);
+    console.error('AI recommendations error:', err.message, err.status || '', err.error || '')
     const msg = err.message || ''
     res.status(500).json({
       success: false,
       message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
         ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
+        : msg.includes('model_not_found') || msg.includes('does not exist')
+        ? 'AI model not available. Please restart the server.'
+        : msg.includes('rate_limit')
+        ? 'AI rate limit hit. Please wait a moment and try again.'
         : 'Failed to get AI recommendations. Please try again.'
-    });
+    })
   }
 };
 
