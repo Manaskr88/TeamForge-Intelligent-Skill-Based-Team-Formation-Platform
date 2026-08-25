@@ -20,6 +20,8 @@ function formatDate(date) {
   if (d.toDateString() === today.toDateString()) return 'Today'
   if (d.toDateString() === yesterday.toDateString()) return 'Yesterday'
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' })
+
+  
 }
 
 function groupByDate(messages) {
