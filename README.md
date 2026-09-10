@@ -1,12 +1,16 @@
 # TeamForge — Intelligent Skill-Based Team Formation Platform
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-team--forge--y1hx.onrender.com-brightgreen)](https://team-forge-y1hx.onrender.com)
 [![Frontend](https://img.shields.io/badge/Frontend-React%2018%20%2B%20Vite-blue)](https://vitejs.dev)
 [![Backend](https://img.shields.io/badge/Backend-Node.js%20%2B%20Express-green)](https://expressjs.com)
 [![Database](https://img.shields.io/badge/Database-MongoDB%20Atlas-emerald)](https://mongodb.com)
-[![AI](https://img.shields.io/badge/AI-Groq%20LLaMA%203.1-purple)](https://console.groq.com)
+[![AI](https://img.shields.io/badge/AI-Groq%20Qwen3-purple)](https://console.groq.com)
 [![Socket.IO](https://img.shields.io/badge/Realtime-Socket.IO-orange)](https://socket.io)
 
 > A production-ready SaaS platform for smart team formation using AI-powered skill matching, real-time chat, and intelligent recommendations.
+
+🌐 **Live:** https://team-forge-y1hx.onrender.com  
+🔧 **API:** https://teamforge-backend-99jn.onrender.com/api/health
 
 ---
 
@@ -34,7 +38,7 @@
 | Frontend | React 18 + Vite, Tailwind CSS, Framer Motion |
 | Backend | Node.js + Express.js + Socket.IO |
 | Database | MongoDB Atlas + Mongoose |
-| AI | Groq API (LLaMA 3.1 8B Instant) |
+| AI | Groq API (Qwen3 27B) |
 | Auth | JWT + bcryptjs |
 | File Upload | Multer |
 
@@ -99,17 +103,18 @@ Open http://localhost:5173
 5. Set environment variables in Render dashboard (from `.env.example`)
 6. Set `CLIENT_URL` to your Vercel frontend URL
 
-### Frontend → Vercel
+### Frontend → Render (Static Site)
 
-1. Push `frontend/` to GitHub
-2. Import project on [vercel.com](https://vercel.com)
-3. **Framework Preset:** Vite
-4. **Build Command:** `npm run build`
-5. **Output Directory:** `dist`
-6. Set environment variables:
+1. Push to GitHub
+2. Create **Static Site** on [render.com](https://render.com)
+3. **Root Directory:** `frontend`
+4. **Build Command:** `npm install && npm run build`
+5. **Publish Directory:** `dist`
+6. Add Redirect/Rewrite: `/*` → `/index.html` (Rewrite)
+7. Set environment variables:
    - `VITE_API_URL` = `https://your-backend.onrender.com/api`
    - `VITE_SOCKET_URL` = `https://your-backend.onrender.com`
-7. Deploy
+   - `VITE_GOOGLE_CLIENT_ID` = your Google OAuth client ID
 
 ---
 
