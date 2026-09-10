@@ -8,10 +8,8 @@ import Button from '../components/ui/Button'
 import Input from '../components/ui/Input'
 import { Select } from '../components/ui/Input'
 import LogoIcon from '../components/ui/LogoIcon'
-// import GoogleButton from '../components/ui/GoogleButton'
+import GoogleButton from '../components/ui/GoogleButton'
 import toast from 'react-hot-toast'
-
-import { GoogleLogin } from '@react-oauth/google'
 
 const POPULAR_SKILLS = ['React', 'Node.js', 'Python', 'TypeScript', 'MongoDB', 'AWS', 'Docker', 'Figma', 'Flutter', 'Go', 'Rust', 'Vue.js']
 
@@ -103,27 +101,8 @@ export default function RegisterPage() {
             <div className="space-y-5">
               <h2 className="text-lg font-bold text-slate-900 mb-1">Basic information</h2>
 
-              {/* Google Sign Up */}
-              {gLoading ? (
-                <div className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-slate-200 text-sm text-slate-500">
-                  <div className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
-                  Creating account with Google...
-                </div>
-              ) : (
-                <GoogleLogin
-                  text="signup_with"
-                  theme="outline"
-                  size="large"
-                  // shape="pill"
-                  // width="350"
-                  onSuccess={(credentialResponse) => {
-                    handleGoogleSuccess(credentialResponse.credential)
-                  }}
-                  onError={() => {
-                    toast.error("Google sign-up failed")
-                  }}
-                />
-              )}
+              {/* Google Sign Up — full width */}
+              <GoogleButton onSuccess={handleGoogleSuccess} text="signup_with" loading={gLoading} />
 
               <div className="flex items-center gap-3">
                 <div className="flex-1 h-px bg-slate-100" />
