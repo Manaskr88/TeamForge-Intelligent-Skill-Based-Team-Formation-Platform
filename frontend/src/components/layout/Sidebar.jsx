@@ -29,12 +29,12 @@ function SidebarContent({ onClose, user, handleLogout }) {
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center justify-between px-5 py-5 border-b border-slate-100">
-        <div className="flex items-center gap-2.5">
+        <NavLink to="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
           <LogoIcon size={32} />
           <span className="font-bold text-lg text-slate-900">
             Team<span className="gradient-text">Forge</span>
           </span>
-        </div>
+        </NavLink>
         {onClose && (
           <button
             onClick={onClose}
