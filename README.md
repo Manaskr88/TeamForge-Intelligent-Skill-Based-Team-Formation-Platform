@@ -10,7 +10,8 @@
 > A production-ready SaaS platform for smart team formation using AI-powered skill matching, real-time chat, and intelligent recommendations.
 
 🌐 **Live:** https://team-forge-y1hx.onrender.com  
-🔧 **API:** https://teamforge-backend-99jn.onrender.com/api/health
+
+
 
 ---
 
