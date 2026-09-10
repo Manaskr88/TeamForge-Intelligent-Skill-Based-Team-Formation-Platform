@@ -13,7 +13,7 @@ function getGroq() {
   return groqClient;
 }
 
-const MODEL = 'meta-llama/llama-4-maverick-17b-128e-instruct'; // Groq free tier, high TPM, reliable JSON
+const MODEL = 'qwen/qwen3.6-27b'; // confirmed available on this Groq account
 
 /**
  * Core chat completion for plain text responses (chat assistant).
@@ -47,6 +47,8 @@ async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
     temperature: 0.6,
     max_tokens:  maxTokens,
     response_format: { type: 'json_object' },
+    // Disable thinking mode for Qwen3 to avoid <think> tokens wasting TPM
+    reasoning_effort: 'none',
   });
   return completion.choices[0]?.message?.content?.trim() || '';
 }
