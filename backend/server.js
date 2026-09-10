@@ -16,10 +16,12 @@ const server = http.createServer(app);
 
 // ── CORS origins ──────────────────────────────────────────────────────────────
 const allowedOrigins = [
-  process.env.CLIENT_URL || 'http://localhost:5173',
+  process.env.CLIENT_URL,
+  'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:5174',
-];
+  'https://team-forge-y1hx.onrender.com',  // production frontend
+].filter(Boolean);
 
 // ── Socket.IO ─────────────────────────────────────────────────────────────────
 const io = new Server(server, {
