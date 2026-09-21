@@ -178,7 +178,13 @@ const aiTeamRecommendations = async (req, res) => {
       recommendations: recommendations.slice(0, parseInt(limit)),
     });
   } catch (err) {
-    console.error('AI recommendations error:', err.message);
+    console.error('AI recommendations error — full error:', JSON.stringify({
+      message: err.message,
+      status: err.status,
+      code: err.code,
+      type: err.error?.type,
+      groqMsg: err.error?.message,
+    }));
     res.status(500).json({
       success: false,
       message: err.message || 'Failed to get AI recommendations. Please try again.',

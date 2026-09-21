@@ -47,6 +47,25 @@ function aiTimeout(req, res, next) {
   next();
 }
 
+// ── Diagnostic endpoint (no AI call, no rate limit) ──────────────────────────
+// GET /api/ai/debug — lists models available to the configured GROQ_API_KEY.
+// Remove or protect this once the AI issue is resolved.
+router.get('/debug', protect, async (req, res) => {
+  const key = process.env.GROQ_API_KEY;
+  if (!key) return res.json({ ok: false, error: 'GROQ_API_KEY is not set' });
+
+  const keyHint = `${key.slice(0, 8)}...${key.slice(-4)}`;
+  try {
+    const Groq = require('groq-sdk');
+    const groq = new Groq({ apiKey: key });
+    const { data: models } = await groq.models.list();
+    const ids = models.map(m => m.id).sort();
+    res.json({ ok: true, keyHint, modelCount: ids.length, models: ids });
+  } catch (err) {
+    res.json({ ok: false, keyHint, error: err.message, status: err.status });
+  }
+});
+
 router.use(protect);
 router.use(aiLimiter);
 router.use(aiTimeout);
