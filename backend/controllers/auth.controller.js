@@ -12,13 +12,11 @@ const register = async (req, res) => {
   try {
     const { name, email, password, role, skills, experienceLevel, availability } = req.body;
 
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
-    // Create user
     const user = await User.create({
       name,
       email,
@@ -26,17 +24,17 @@ const register = async (req, res) => {
       role: role || 'developer',
       skills: skills || [],
       experienceLevel: experienceLevel || 'beginner',
-      availability: availability || 'part-time'
+      availability: availability || 'part-time',
     });
 
-    // Create welcome notification
-    await Notification.create({
+    // Welcome notification — fire-and-forget (don't block the response)
+    Notification.create({
       recipient: user._id,
       type: 'system',
       title: 'Welcome to TeamForge!',
       message: `Hey ${user.name}! Your account is ready. Start by completing your profile and exploring teams.`,
-      link: '/dashboard/profile'
-    });
+      link: '/dashboard/profile',
+    }).catch((err) => console.error('Welcome notification error:', err.message));
 
     const token = generateToken(user._id);
 
@@ -55,12 +53,11 @@ const register = async (req, res) => {
         avatar: user.avatar,
         bio: user.bio,
         github: user.github,
-        linkedin: user.linkedin
-      }
+        linkedin: user.linkedin,
+      },
     });
   } catch (error) {
     console.error('Register error:', error);
-    // Surface validation errors (e.g. duplicate email race condition)
     if (error.code === 11000) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
@@ -87,22 +84,23 @@ const login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide email and password' });
     }
 
-    // Find user with password
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Update online status
-    user.isOnline = true;
-    user.lastSeen = new Date();
-    await user.save({ validateBeforeSave: false });
+    // Update online status without triggering full model validation — use updateOne
+    // so we don't block the response with a full .save() round-trip.
+    User.findByIdAndUpdate(
+      user._id,
+      { isOnline: true, lastSeen: new Date() },
+      { timestamps: false }
+    ).catch((err) => console.error('isOnline update error:', err.message));
 
     const token = generateToken(user._id);
 
@@ -123,8 +121,8 @@ const login = async (req, res) => {
         github: user.github,
         linkedin: user.linkedin,
         location: user.location,
-        website: user.website
-      }
+        website: user.website,
+      },
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -141,12 +139,17 @@ const login = async (req, res) => {
 // @access  Private
 const getMe = async (req, res) => {
   try {
+    // req.user is already populated by protect middleware — avoid a second DB call.
+    // Only populate the references we actually need for the session restore.
     const user = await User.findById(req.user._id)
-      .populate('teams', 'name description status')
-      .populate('projects', 'title category status');
+      .select('-password')
+      .populate('teams',    'name description status')
+      .populate('projects', 'title category status')
+      .lean();
 
     res.json({ success: true, user });
   } catch (error) {
+    console.error('getMe error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
@@ -156,17 +159,15 @@ const getMe = async (req, res) => {
 // @access  Private
 const logout = async (req, res) => {
   try {
-    await User.findByIdAndUpdate(req.user._id, {
-      isOnline: false,
-      lastSeen: new Date()
-    });
+    // Fire-and-forget — don't make the client wait for a DB write on logout
+    User.findByIdAndUpdate(req.user._id, { isOnline: false, lastSeen: new Date() })
+      .catch((err) => console.error('logout status update error:', err.message));
+
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
-
-module.exports = { register, login, getMe, logout };
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
 // POST /api/auth/google
@@ -181,7 +182,6 @@ const googleAuth = async (req, res) => {
       return res.status(500).json({ success: false, message: 'Google OAuth not configured on server' });
     }
 
-    // Verify Google token
     const ticket  = await googleClient.verifyIdToken({
       idToken:  credential,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -193,26 +193,24 @@ const googleAuth = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Unable to get email from Google account' });
     }
 
-    // Find existing user by googleId or email
     let user = await User.findOne({ $or: [{ googleId }, { email: email.toLowerCase() }] });
 
     if (user) {
-      // Update google fields if user registered with email/password previously
       if (!user.googleId) {
-        user.googleId  = googleId;
-        user.provider  = 'google';
+        user.googleId = googleId;
+        user.provider = 'google';
         if (!user.avatar && picture) user.avatar = picture;
         await user.save({ validateBeforeSave: false });
       }
     } else {
-      // Create new user from Google data
       user = await User.create({
         name,
         email:           email.toLowerCase(),
         googleId,
         provider:        'google',
         avatar:          picture || '',
-        password:        `google_oauth_${googleId}_${Date.now()}`, // placeholder — never used
+        // Placeholder password — never used for OAuth users
+        password:        `google_oauth_${googleId}_${Date.now()}`,
         role:            'developer',
         skills:          [],
         experienceLevel: 'beginner',
@@ -221,19 +219,18 @@ const googleAuth = async (req, res) => {
         isVerified:      true,
       });
 
-      await Notification.create({
+      Notification.create({
         recipient: user._id,
         type:      'system',
         title:     'Welcome to TeamForge!',
         message:   `Hey ${user.name}! Your account is ready. Start by completing your profile and exploring teams.`,
         link:      '/dashboard/profile',
-      });
+      }).catch((err) => console.error('Google welcome notification error:', err.message));
     }
 
-    // Update online status
-    user.isOnline = true;
-    user.lastSeen = new Date();
-    await user.save({ validateBeforeSave: false });
+    // Fire-and-forget online status update
+    User.findByIdAndUpdate(user._id, { isOnline: true, lastSeen: new Date() })
+      .catch((err) => console.error('Google auth isOnline update error:', err.message));
 
     const token = generateToken(user._id);
 
@@ -266,4 +263,5 @@ const googleAuth = async (req, res) => {
   }
 };
 
+// Single clean export — no duplicate module.exports
 module.exports = { register, login, getMe, logout, googleAuth };

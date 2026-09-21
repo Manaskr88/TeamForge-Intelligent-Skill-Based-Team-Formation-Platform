@@ -2,29 +2,54 @@ import axios from 'axios'
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
+// ── Default API instance (30 s timeout — covers all normal requests) ──────────
 const api = axios.create({
   baseURL: API_BASE,
   headers: { 'Content-Type': 'application/json' },
   timeout: 30000,
 })
 
-api.interceptors.request.use((config) => {
+// ── AI-specific instance (longer timeout for Groq completions) ───────────────
+// AI calls can legitimately take 15-25 s on Groq free tier.
+// We keep them on a separate instance so slow AI calls don't affect the
+// timeout budget of regular API calls.
+const aiApi = axios.create({
+  baseURL: API_BASE,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 60000,
+})
+
+// ── Request interceptor — attach JWT for both instances ───────────────────────
+function attachToken(config) {
   const token = localStorage.getItem('tf_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
-})
+}
 
-api.interceptors.response.use(
-  (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
+api.interceptors.request.use(attachToken)
+aiApi.interceptors.request.use(attachToken)
+
+// ── Response interceptor — handle 401 gracefully ─────────────────────────────
+// We only redirect to /login when:
+//   a) The response is 401 AND
+//   b) The URL is NOT /auth/me (session restore probe — let AuthContext handle it)
+// Previously this interceptor redirected unconditionally during initial load,
+// which caused a redirect loop when the token had expired on a cold start.
+function handleAuthError(err) {
+  if (err.response?.status === 401) {
+    const url = err.config?.url || ''
+    const isSessionRestore = url.includes('/auth/me')
+    if (!isSessionRestore) {
       localStorage.removeItem('tf_token')
       localStorage.removeItem('tf_user')
       window.location.href = '/login'
     }
-    return Promise.reject(err)
   }
-)
+  return Promise.reject(err)
+}
+
+api.interceptors.response.use((res) => res, handleAuthError)
+aiApi.interceptors.response.use((res) => res, handleAuthError)
 
 // ── Auth ──────────────────────────────────────────────
 export const authAPI = {
@@ -115,17 +140,17 @@ export const profileAPI = {
   getPublic: (userId) => api.get(`/users/${userId}`),
 }
 
-// ── AI Features ───────────────────────────────────────
+// ── AI Features — use aiApi for the longer timeout ────────────────────────────
 export const aiAPI = {
-  chat:                  (data)   => api.post('/ai/chat', data),
-  generateIdea:          (data)   => api.post('/ai/generate-idea', data),
+  chat:                  (data)   => aiApi.post('/ai/chat', data),
+  generateIdea:          (data)   => aiApi.post('/ai/generate-idea', data),
   saveIdea:              (data)   => api.post('/ai/save-idea', data),
   getSavedIdeas:         ()       => api.get('/ai/saved-ideas'),
   deleteSavedIdea:       (id)     => api.delete(`/ai/saved-ideas/${id}`),
-  skillGapAnalysis:      (data)   => api.post('/ai/skill-gap-analysis', data),
-  teamRecommendations:   (params) => api.post('/ai/team-recommendations', {}, { params }),
-  teamAnalysis:          (data)   => api.post('/ai/team-analysis', data),
-  extractProjectDetails: (data)   => api.post('/ai/extract-project-details', data),
+  skillGapAnalysis:      (data)   => aiApi.post('/ai/skill-gap-analysis', data),
+  teamRecommendations:   (params) => aiApi.post('/ai/team-recommendations', {}, { params }),
+  teamAnalysis:          (data)   => aiApi.post('/ai/team-analysis', data),
+  extractProjectDetails: (data)   => aiApi.post('/ai/extract-project-details', data),
 }
 
 export default api

@@ -3,6 +3,10 @@ services:
     name: teamforge-backend
     env: node
     plan: free
+    # Render uses this to confirm the service started successfully.
+    # The /health endpoint responds instantly without needing DB,
+    # so Render won't time out waiting for a DB connection on cold start.
+    healthCheckPath: /health
     buildCommand: npm install
     startCommand: npm start
     envVars:

@@ -13,22 +13,87 @@ function getGroq() {
   return groqClient;
 }
 
-const MODEL = 'qwen/qwen3.6-27b'; // confirmed available on this Groq account
+// Primary model — confirmed available on Groq free tier
+const MODEL = 'llama3-8b-8192';
+
+// Fallback model if primary is unavailable or rate-limited
+const FALLBACK_MODEL = 'llama3-groq-8b-8192-tool-use-preview';
+
+// How long (ms) to wait for any single Groq API call before aborting.
+// Render free tier requests time out at ~30s; keep AI well under that.
+const GROQ_TIMEOUT_MS = 25000;
+
+/**
+ * Wraps a promise with a hard timeout so a slow Groq call can never
+ * stall an Express response indefinitely.
+ */
+function withTimeout(promise, ms = GROQ_TIMEOUT_MS, label = 'AI request') {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms / 1000}s. The AI service may be busy — please try again.`)),
+      ms
+    );
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
+/**
+ * Translates Groq SDK error objects into clean, user-facing messages.
+ * Never exposes API keys, stack traces, or internal details.
+ */
+function classifyGroqError(err) {
+  const msg = (err.message || '').toLowerCase();
+  const status = err.status || err.statusCode || 0;
+
+  if (msg.includes('groq_api_key') || msg.includes('api key is not set')) {
+    return 'The AI service is not configured. Please contact support.';
+  }
+  if (msg.includes('invalid_api_key') || msg.includes('invalid api key') || status === 401) {
+    return 'The AI service has an invalid API key. Please contact support.';
+  }
+  if (msg.includes('rate_limit') || msg.includes('rate limit') || status === 429) {
+    return 'The AI service is busy right now. Please wait a moment and try again.';
+  }
+  if (msg.includes('model_not_found') || msg.includes('does not exist') || msg.includes('model not found') || status === 404) {
+    return 'The AI model is temporarily unavailable. Please try again in a moment.';
+  }
+  if (msg.includes('timed out') || msg.includes('timeout')) {
+    return 'The AI request took too long. Please try again.';
+  }
+  if (msg.includes('context_length') || msg.includes('context length') || msg.includes('maximum context')) {
+    return 'Your request is too long for the AI to process. Try a shorter input.';
+  }
+  if (msg.includes('service_unavailable') || status === 503) {
+    return 'The AI service is temporarily unavailable. Please try again shortly.';
+  }
+  if (msg.includes('fetch') || msg.includes('network') || msg.includes('econnreset') || msg.includes('enotfound')) {
+    return 'Could not reach the AI service due to a network issue. Please try again.';
+  }
+  // Generic fallback — never say "restart the server"
+  return 'The AI service encountered an error. Please try again in a moment.';
+}
 
 /**
  * Core chat completion for plain text responses (chat assistant).
  */
 async function chat(systemPrompt, userMessage, maxTokens = 800) {
   const groq = getGroq();
-  const completion = await groq.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user',   content: userMessage  },
-    ],
-    temperature: 0.7,
-    max_tokens:  maxTokens,
-  });
+  const completion = await withTimeout(
+    groq.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user',   content: userMessage  },
+      ],
+      temperature: 0.7,
+      max_tokens:  maxTokens,
+    }),
+    GROQ_TIMEOUT_MS,
+    'AI chat'
+  );
   return completion.choices[0]?.message?.content?.trim() || '';
 }
 
@@ -36,36 +101,35 @@ async function chat(systemPrompt, userMessage, maxTokens = 800) {
  * JSON-specific completion — forces response_format: json_object.
  * Use this for all features that need parseable JSON back.
  */
-async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
+async function chatJSON(systemPrompt, userMessage, maxTokens = 1000, model = MODEL) {
   const groq = getGroq();
-  const completion = await groq.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: 'system', content: systemPrompt + '\nRespond with valid JSON only.' },
-      { role: 'user',   content: userMessage  },
-    ],
-    temperature: 0.6,
-    max_tokens:  maxTokens,
-    response_format: { type: 'json_object' },
-    // Disable thinking mode for Qwen3 to avoid <think> tokens wasting TPM
-    reasoning_effort: 'none',
-  });
+  const completion = await withTimeout(
+    groq.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: systemPrompt + '\nRespond with valid JSON only.' },
+        { role: 'user',   content: userMessage  },
+      ],
+      temperature: 0.6,
+      max_tokens:  maxTokens,
+      response_format: { type: 'json_object' },
+    }),
+    GROQ_TIMEOUT_MS,
+    'AI JSON request'
+  );
   return completion.choices[0]?.message?.content?.trim() || '';
 }
 
 /**
- * Parse JSON from AI response — strips markdown fences and reasoning tags if present.
- * openai/gpt-oss-20b (reasoning model) may emit <think>...</think> before the JSON.
+ * Parse JSON from AI response — strips markdown fences if present.
  */
 function parseJSON(text) {
-  // Strip <think>...</think> blocks (reasoning model output)
-  let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim()
   // Strip markdown fences
-  cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
   // Extract the first valid JSON object or array
-  const objMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/)
-  if (objMatch) cleaned = objMatch[1]
-  return JSON.parse(cleaned)
+  const objMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (objMatch) cleaned = objMatch[1];
+  return JSON.parse(cleaned);
 }
 
 // ── Feature 1: Team Chat AI Assistant ────────────────────────────────────────
@@ -86,7 +150,11 @@ You help with:
 Keep responses concise, developer-friendly, and use markdown formatting where helpful.
 Use bullet points, code blocks, and headers to structure longer answers.`;
 
-  return await chat(system, message, 1024);
+  try {
+    return await chat(system, message, 1024);
+  } catch (err) {
+    throw new Error(classifyGroqError(err));
+  }
 }
 
 // ── Feature 2: Hackathon Idea Generator ──────────────────────────────────────
@@ -122,8 +190,16 @@ Return JSON:
   "difficulty": "${difficulty}"
 }`;
 
-  const raw = await chatJSON(system, userMsg, 1000);
-  return parseJSON(raw);
+  try {
+    const raw = await chatJSON(system, userMsg, 1000);
+    return parseJSON(raw);
+  } catch (err) {
+    // If it's a JSON parse error from a valid AI response, rethrow with context
+    if (err instanceof SyntaxError) {
+      throw new Error('The AI returned an unexpected response. Please try again.');
+    }
+    throw new Error(classifyGroqError(err));
+  }
 }
 
 // ── Feature 3: Skill Gap Analyzer ────────────────────────────────────────────
@@ -131,7 +207,7 @@ async function analyzeSkillGap({ currentSkills, targetRole, experienceLevel, car
   const system = `You are a tech career coach. Analyze skill gaps and return JSON.`;
 
   const userMsg = `Skill gap analysis:
-Skills: ${currentSkills?.slice(0,8).join(', ') || 'none'}
+Skills: ${currentSkills?.slice(0, 8).join(', ') || 'none'}
 Target: ${targetRole} | Level: ${experienceLevel}
 
 Return JSON:
@@ -155,8 +231,15 @@ Return JSON:
   "jobMarketDemand": "high"
 }`;
 
-  const raw = await chatJSON(system, userMsg, 1000);
-  return parseJSON(raw);
+  try {
+    const raw = await chatJSON(system, userMsg, 1000);
+    return parseJSON(raw);
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error('The AI returned an unexpected response. Please try again.');
+    }
+    throw new Error(classifyGroqError(err));
+  }
 }
 
 // ── Feature 4: AI Team Recommendations ───────────────────────────────────────
@@ -168,10 +251,10 @@ async function aiTeamRecommendations({ currentUser, candidates }) {
 
   const userMsg = `Rate compatibility between user and each candidate (0-100).
 
-User: ${currentUser.name} | Skills: ${currentUser.skills?.slice(0,5).join(', ') || 'none'} | Exp: ${currentUser.experienceLevel}
+User: ${currentUser.name} | Skills: ${currentUser.skills?.slice(0, 5).join(', ') || 'none'} | Exp: ${currentUser.experienceLevel}
 
 Candidates:
-${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0,5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
+${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0, 5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
 
 Return JSON:
 {
@@ -180,25 +263,32 @@ Return JSON:
   ]
 }`;
 
-  const raw = await chatJSON(system, userMsg, 800);
-  const parsed = parseJSON(raw);
-  const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || []);
+  try {
+    const raw = await chatJSON(system, userMsg, 800);
+    const parsed = parseJSON(raw);
+    const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || []);
 
-  return top.map((candidate, i) => {
-    const ai = aiResults.find(r => r.candidateIndex === i) || aiResults[i] || {};
-    return {
-      user: candidate,
-      compatibility: {
-        score:               ai.compatibilityScore || 50,
-        matchingSkills:      ai.matchingSkills || [],
-        complementarySkills: ai.complementarySkills || [],
-        suggestedRole:       ai.suggestedRole || 'Team Member',
-        whyGoodMatch:        ai.whyGoodMatch || 'Compatible profiles',
-        collaborationStyle:  ai.collaborationStyle || '',
-        riskFactors:         ai.riskFactors || null,
-      },
-    };
-  }).sort((a, b) => b.compatibility.score - a.compatibility.score);
+    return top.map((candidate, i) => {
+      const ai = aiResults.find(r => r.candidateIndex === i) || aiResults[i] || {};
+      return {
+        user: candidate,
+        compatibility: {
+          score:               ai.compatibilityScore || 50,
+          matchingSkills:      ai.matchingSkills || [],
+          complementarySkills: ai.complementarySkills || [],
+          suggestedRole:       ai.suggestedRole || 'Team Member',
+          whyGoodMatch:        ai.whyGoodMatch || 'Compatible profiles',
+          collaborationStyle:  ai.collaborationStyle || '',
+          riskFactors:         ai.riskFactors || null,
+        },
+      };
+    }).sort((a, b) => b.compatibility.score - a.compatibility.score);
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error('The AI returned an unexpected response. Please try again.');
+    }
+    throw new Error(classifyGroqError(err));
+  }
 }
 
 // ── Feature 5: AI Team-Mode Recommendations ──────────────────────────────────
@@ -207,11 +297,11 @@ async function aiTeamModeRecommendations({ teamName, requiredSkills, missingSkil
 
   const top = candidates.slice(0, 5);
 
-  const userMsg = `Team "${teamName}" needs: ${missingSkills.slice(0,5).join(', ') || 'general skills'}
-Has: ${combinedMemberSkills.slice(0,5).join(', ') || 'none'}
+  const userMsg = `Team "${teamName}" needs: ${missingSkills.slice(0, 5).join(', ') || 'general skills'}
+Has: ${combinedMemberSkills.slice(0, 5).join(', ') || 'none'}
 
 Candidates:
-${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0,5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
+${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0, 5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
 
 Return JSON:
 {
@@ -220,25 +310,32 @@ Return JSON:
   ]
 }`;
 
-  const raw = await chatJSON(system, userMsg, 800);
-  const parsed = parseJSON(raw);
-  const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || []);
+  try {
+    const raw = await chatJSON(system, userMsg, 800);
+    const parsed = parseJSON(raw);
+    const aiResults = Array.isArray(parsed) ? parsed : (parsed.results || []);
 
-  return top.map((candidate, i) => {
-    const ai = aiResults.find(r => r.candidateIndex === i) || aiResults[i] || {};
-    return {
-      user: candidate,
-      compatibility: {
-        score:           ai.compatibilityScore || 50,
-        skillsFulfilled: ai.skillsFulfilled    || [],
-        suggestedRole:   ai.suggestedRole      || 'Team Member',
-        whyGoodMatch:    ai.whyGoodMatch       || 'Complements team skills',
-        teamImpact:      ai.teamImpact         || '',
-        riskFactors:     ai.riskFactors        || null,
-        mode:            'team',
-      },
-    };
-  }).sort((a, b) => b.compatibility.score - a.compatibility.score);
+    return top.map((candidate, i) => {
+      const ai = aiResults.find(r => r.candidateIndex === i) || aiResults[i] || {};
+      return {
+        user: candidate,
+        compatibility: {
+          score:           ai.compatibilityScore || 50,
+          skillsFulfilled: ai.skillsFulfilled    || [],
+          suggestedRole:   ai.suggestedRole      || 'Team Member',
+          whyGoodMatch:    ai.whyGoodMatch       || 'Complements team skills',
+          teamImpact:      ai.teamImpact         || '',
+          riskFactors:     ai.riskFactors        || null,
+          mode:            'team',
+        },
+      };
+    }).sort((a, b) => b.compatibility.score - a.compatibility.score);
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error('The AI returned an unexpected response. Please try again.');
+    }
+    throw new Error(classifyGroqError(err));
+  }
 }
 
 // ── Feature 6: Extract project details from free-text description ─────────────
@@ -264,10 +361,11 @@ Rules:
 - teamSize: convert "4 members" to "3-4", "team of 5" to "5-6"
 - difficulty must be one of: beginner, intermediate, advanced`;
 
-  const raw = await chatJSON(system, userMsg, 400);
   try {
+    const raw = await chatJSON(system, userMsg, 400);
     return parseJSON(raw);
   } catch {
+    // Non-critical feature — return safe defaults instead of crashing
     return { domain: 'General', techStack: [], teamSize: '3-4', difficulty: 'intermediate', theme: 'Open Innovation' };
   }
 }
@@ -279,4 +377,5 @@ module.exports = {
   aiTeamRecommendations,
   aiTeamModeRecommendations,
   extractProjectDetails,
+  classifyGroqError,
 };

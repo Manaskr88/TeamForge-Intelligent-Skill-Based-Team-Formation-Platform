@@ -28,8 +28,28 @@ const aiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Express-level request timeout for all AI routes (55 s).
+// This is a belt-and-suspenders guard alongside the Groq SDK timeout.
+// If the entire handler hasn't responded in 55 s, return a clean 503.
+function aiTimeout(req, res, next) {
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({
+        success: false,
+        message: 'The AI request took too long. Please try again.',
+      });
+    }
+  }, 55000);
+
+  // Clear the timer once the response is sent so Node doesn't hold the handle
+  res.on('finish', () => clearTimeout(timer));
+  res.on('close',  () => clearTimeout(timer));
+  next();
+}
+
 router.use(protect);
 router.use(aiLimiter);
+router.use(aiTimeout);
 
 // Feature 1 — Team Chat AI
 router.post('/chat', chatAssistant);

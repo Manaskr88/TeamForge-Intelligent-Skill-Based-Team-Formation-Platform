@@ -11,6 +11,20 @@ const jwt        = require('jsonwebtoken');
 
 dotenv.config();
 
+// ── Global crash guards (MUST be first) ──────────────────────────────────────
+// These prevent the entire Node process from dying on unhandled async errors.
+process.on('uncaughtException', (err) => {
+  console.error('💥 UNCAUGHT EXCEPTION — server will continue:', err.message);
+  console.error(err.stack);
+  // Do NOT call process.exit() — Render free tier takes ~30s to restart.
+  // Log and continue; a single bad request should never kill the server.
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION at:', promise, 'reason:', reason);
+  // Same reasoning — log but keep running.
+});
+
 const app    = express();
 const server = http.createServer(app);
 
@@ -27,6 +41,8 @@ const allowedOrigins = [
 const io = new Server(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
   pingTimeout: 60000,
+  // Reduce ping interval on free tier to avoid false disconnects during cold wake
+  pingInterval: 25000,
 });
 
 // Attach io to app so controllers can emit if needed
@@ -225,9 +241,13 @@ io.on('connection', (socket) => {
     const userData = onlineUsers.get(socket.id);
     if (userData) {
       for (const teamId of userData.teamIds) {
-        const roomSockets = await io.in(`team:${teamId}`).fetchSockets();
-        const onlineInTeam = [...new Set(roomSockets.map(s => s.userId))];
-        io.to(`team:${teamId}`).emit('online_users', { teamId, users: onlineInTeam });
+        try {
+          const roomSockets = await io.in(`team:${teamId}`).fetchSockets();
+          const onlineInTeam = [...new Set(roomSockets.map(s => s.userId))];
+          io.to(`team:${teamId}`).emit('online_users', { teamId, users: onlineInTeam });
+        } catch (err) {
+          console.error('disconnect broadcast error:', err.message);
+        }
       }
       onlineUsers.delete(socket.id);
     }
@@ -236,17 +256,42 @@ io.on('connection', (socket) => {
 
 // ── Express middleware ────────────────────────────────────────────────────────
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors({ origin: allowedOrigins, credentials: true, methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'], allowedHeaders: ['Content-Type','Authorization'] }));
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
+// Use 'combined' log format in production for better request auditing
+if (process.env.NODE_ENV !== 'test') app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ── Health check (no DB required) ─────────────────────────────────────────────
+// This endpoint must respond instantly so the frontend can detect whether
+// the server is awake. It intentionally does NOT require dbReady.
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    db: dbReady ? 'connected' : 'connecting',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  });
+});
 
 // ── DB-ready guard ────────────────────────────────────────────────────────────
 let dbReady = false;
 app.use('/api', (req, res, next) => {
+  // /api/health is excluded from the guard
   if (req.path === '/health') return next();
-  if (!dbReady) return res.status(503).json({ success: false, message: 'Database connecting, please retry.' });
+  if (!dbReady) {
+    return res.status(503).json({
+      success: false,
+      message: 'Server is starting up. Please retry in a few seconds.',
+      retryAfter: 3,
+    });
+  }
   next();
 });
 
@@ -261,46 +306,80 @@ app.use('/api/recommendations', require('./routes/recommendation.routes'));
 app.use('/api/chat',            require('./routes/chat.routes'));
 app.use('/api/ai',              require('./routes/ai.routes'));
 
+// /api/health — also responds with DB state for frontend probing
 app.get('/api/health', (req, res) =>
-  res.json({ status: 'OK', db: dbReady ? 'connected' : 'connecting', timestamp: new Date() })
+  res.json({
+    status: 'ok',
+    db: dbReady ? 'connected' : 'connecting',
+    uptime: Math.floor(process.uptime()),
+    timestamp: new Date().toISOString(),
+  })
 );
 
-// ── Error handlers ────────────────────────────────────────────────────────────
+// ── 404 handler ───────────────────────────────────────────────────────────────
 app.use((req, res) => res.status(404).json({ success: false, message: 'Route not found' }));
+
+// ── Global error handler ──────────────────────────────────────────────────────
+// eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
   console.error('❌ Unhandled error:', err.message);
-  res.status(err.statusCode || 500).json({
+  // Never expose stack traces in production
+  const isDev = process.env.NODE_ENV === 'development';
+  res.status(err.statusCode || err.status || 500).json({
     success: false,
-    message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    message: isDev ? err.message : (err.message || 'Internal Server Error'),
+    ...(isDev && { stack: err.stack }),
   });
 });
 
-// ── MongoDB ───────────────────────────────────────────────────────────────────
-const connectDB = async () => {
+// ── MongoDB connection ────────────────────────────────────────────────────────
+const connectDB = async (attempt = 1) => {
   try {
     const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      // Atlas M0 free tier: keep pool small to avoid exhausting connections
+      maxPoolSize: 5,
+      minPoolSize: 1,
+      // How long to wait for a server selection before erroring
       serverSelectionTimeoutMS: 10000,
+      // How long a socket can be idle before being closed
       socketTimeoutMS: 45000,
+      // How long to wait for a connection to be established
+      connectTimeoutMS: 10000,
+      // Keep the connection alive during inactivity (Atlas sleeps connections after idle)
+      heartbeatFrequencyMS: 10000,
     });
     dbReady = true;
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
     console.log(`📦 Database: ${conn.connection.name}`);
   } catch (error) {
-    console.error('❌ MongoDB connection failed:', error.message);
-    setTimeout(connectDB, 5000);
+    console.error(`❌ MongoDB connection attempt ${attempt} failed: ${error.message}`);
+    // Exponential backoff: 3s, 6s, 12s, capped at 30s
+    const delay = Math.min(3000 * Math.pow(2, attempt - 1), 30000);
+    console.log(`   Retrying in ${delay / 1000}s...`);
+    setTimeout(() => connectDB(attempt + 1), delay);
   }
 };
 
-mongoose.connection.on('disconnected', () => { dbReady = false; console.warn('⚠️  MongoDB disconnected'); });
-mongoose.connection.on('reconnected',  () => { dbReady = true;  console.log('✅ MongoDB reconnected'); });
+mongoose.connection.on('disconnected', () => {
+  dbReady = false;
+  console.warn('⚠️  MongoDB disconnected — requests will return 503 until reconnected');
+});
+mongoose.connection.on('reconnected', () => {
+  dbReady = true;
+  console.log('✅ MongoDB reconnected');
+});
+mongoose.connection.on('error', (err) => {
+  console.error('❌ MongoDB error:', err.message);
+});
 
 connectDB();
 
+// ── Start server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 TeamForge Server + Socket.IO running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🏥 Health check: GET /health or GET /api/health`);
 });
 
 module.exports = { app, io };

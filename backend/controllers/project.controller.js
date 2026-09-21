@@ -92,9 +92,9 @@ const getProjectById = async (req, res) => {
 
     if (!project) return res.status(404).json({ success: false, message: 'Project not found' });
 
-    // Increment views
-    project.views += 1;
-    await project.save({ validateBeforeSave: false });
+    // Increment views without a full save round-trip (no validation overhead)
+    Project.findByIdAndUpdate(req.params.id, { $inc: { views: 1 } })
+      .catch((err) => console.error('view increment error:', err.message));
 
     res.json({ success: true, project });
   } catch (error) {

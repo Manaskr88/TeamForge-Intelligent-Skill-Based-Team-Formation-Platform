@@ -1,7 +1,7 @@
-const aiService   = require('../services/ai.service');
-const User        = require('../models/User.model');
-const Team        = require('../models/Team.model');
-const SavedIdea   = require('../models/SavedIdea.model');
+const aiService = require('../services/ai.service');
+const User      = require('../models/User.model');
+const Team      = require('../models/Team.model');
+const SavedIdea = require('../models/SavedIdea.model');
 
 // ── Feature 1: Team Chat AI Assistant ────────────────────────────────────────
 // POST /api/ai/chat
@@ -36,15 +36,8 @@ const chatAssistant = async (req, res) => {
     res.json({ success: true, response });
   } catch (err) {
     console.error('AI chat error:', err.message);
-    const msg = err.message || ''
-    res.status(500).json({
-      success: false,
-      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
-        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env with a valid key from console.groq.com'
-        : msg.includes('GROQ_API_KEY')
-        ? 'AI service not configured. Please add GROQ_API_KEY to backend/.env'
-        : 'AI service error. Please try again.',
-    });
+    // err.message is already a clean user-facing string from classifyGroqError
+    res.status(500).json({ success: false, message: err.message || 'AI service error. Please try again.' });
   }
 };
 
@@ -61,22 +54,16 @@ const generateIdea = async (req, res) => {
     const idea = await aiService.generateHackathonIdea({
       domain,
       techStack: Array.isArray(techStack) ? techStack.join(', ') : techStack,
-      teamSize:  teamSize  || '3-4 people',
+      teamSize:  teamSize   || '3-4 people',
       difficulty: difficulty || 'intermediate',
-      theme:     theme     || 'open',
+      theme:     theme      || 'open',
       problemArea: problemArea || 'general',
     });
 
     res.json({ success: true, idea });
   } catch (err) {
     console.error('Idea generator error:', err.message);
-    const msg = err.message || ''
-    res.status(500).json({
-      success: false,
-      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
-        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
-        : 'Failed to generate idea. Please try again.'
-    });
+    res.status(500).json({ success: false, message: err.message || 'Failed to generate idea. Please try again.' });
   }
 };
 
@@ -154,13 +141,7 @@ const skillGapAnalysis = async (req, res) => {
     res.json({ success: true, analysis });
   } catch (err) {
     console.error('Skill gap error:', err.message);
-    const msg = err.message || ''
-    res.status(500).json({
-      success: false,
-      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
-        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
-        : 'Failed to analyze skill gap. Please try again.'
-    });
+    res.status(500).json({ success: false, message: err.message || 'Failed to analyze skill gap. Please try again.' });
   }
 };
 
@@ -197,18 +178,11 @@ const aiTeamRecommendations = async (req, res) => {
       recommendations: recommendations.slice(0, parseInt(limit)),
     });
   } catch (err) {
-    console.error('AI recommendations error:', err.message, err.status || '', err.error || '')
-    const msg = err.message || ''
+    console.error('AI recommendations error:', err.message);
     res.status(500).json({
       success: false,
-      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
-        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
-        : msg.includes('model_not_found') || msg.includes('does not exist')
-        ? 'AI model not available. Please restart the server.'
-        : msg.includes('rate_limit')
-        ? 'AI rate limit hit. Please wait a moment and try again.'
-        : 'Failed to get AI recommendations. Please try again.'
-    })
+      message: err.message || 'Failed to get AI recommendations. Please try again.',
+    });
   }
 };
 
@@ -219,8 +193,8 @@ const aiTeamAnalysis = async (req, res) => {
     const { teamId } = req.body;
     if (!teamId) return res.status(400).json({ success: false, message: 'teamId is required' });
 
-    const Team = require('../models/Team.model');
-    const team = await Team.findById(teamId)
+    const TeamModel = require('../models/Team.model');
+    const team = await TeamModel.findById(teamId)
       .populate('members.user', 'name skills experienceLevel availability role');
 
     if (!team) return res.status(404).json({ success: false, message: 'Team not found' });
@@ -240,7 +214,9 @@ const aiTeamAnalysis = async (req, res) => {
         .select('name skills experienceLevel availability role bio avatar isOnline')
         .limit(10).lean();
       if (candidates.length < 3) {
-        const extra = await User.find({ _id: { $nin: [...memberIds, ...candidates.map(c => c._id.toString())] } })
+        const extra = await User.find({
+          _id: { $nin: [...memberIds, ...candidates.map(c => c._id.toString())] },
+        })
           .select('name skills experienceLevel availability role bio avatar isOnline')
           .limit(5).lean();
         candidates = [...candidates, ...extra];
@@ -252,31 +228,39 @@ const aiTeamAnalysis = async (req, res) => {
     }
 
     if (candidates.length === 0) {
-      return res.json({ success: true, recommendations: [], teamInfo: { name: team.name, requiredSkills, missingSkills, combinedSkills } });
+      return res.json({
+        success: true,
+        recommendations: [],
+        teamInfo: { name: team.name, requiredSkills, missingSkills, combinedSkills },
+      });
     }
 
     const recommendations = await aiService.aiTeamModeRecommendations({
-      teamName:            team.name,
+      teamName:             team.name,
       requiredSkills,
       missingSkills,
       combinedMemberSkills: combinedSkills,
       candidates,
-      projectType:         team.projectType,
+      projectType:          team.projectType,
     });
 
     res.json({
       success: true,
       recommendations,
-      teamInfo: { name: team.name, requiredSkills, missingSkills, combinedSkills, memberCount: team.members.length, maxMembers: team.maxMembers },
+      teamInfo: {
+        name: team.name,
+        requiredSkills,
+        missingSkills,
+        combinedSkills,
+        memberCount: team.members.length,
+        maxMembers: team.maxMembers,
+      },
     });
   } catch (err) {
     console.error('AI team analysis error:', err.message);
-    const msg = err.message || '';
     res.status(500).json({
       success: false,
-      message: msg.includes('invalid_api_key') || msg.includes('Invalid API Key')
-        ? 'Invalid Groq API key. Please update GROQ_API_KEY in backend/.env'
-        : 'Failed to get AI team analysis. Please try again.',
+      message: err.message || 'Failed to get AI team analysis. Please try again.',
     });
   }
 };
@@ -297,7 +281,7 @@ const extractProjectDetails = async (req, res) => {
     res.json({ success: true, details });
   } catch (err) {
     console.error('Extract project details error:', err.message);
-    // Return defaults instead of failing hard
+    // Return safe defaults — this is a non-critical helper endpoint
     res.json({
       success: true,
       details: { domain: 'General', techStack: [], teamSize: '3-4', difficulty: 'intermediate', theme: 'Open Innovation' },

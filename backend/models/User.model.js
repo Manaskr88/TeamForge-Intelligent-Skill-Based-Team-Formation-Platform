@@ -111,6 +111,14 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// ── Indexes ───────────────────────────────────────────────────────────────────
+// Speeds up the recommendation and explore-users queries which filter/sort
+// by skills and experienceLevel.
+userSchema.index({ skills: 1 });
+userSchema.index({ experienceLevel: 1 });
+userSchema.index({ availability: 1 });
+userSchema.index({ createdAt: -1 });
+
 // Hash password before saving
 userSchema.pre('save', async function() {
   if (!this.isModified('password')) return;
