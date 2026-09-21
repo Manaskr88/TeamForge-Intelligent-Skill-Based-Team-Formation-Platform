@@ -1,6 +1,6 @@
 const Groq = require('groq-sdk');
 
-// Lazy-init so missing key doesn't crash on startup
+// ── Groq client (lazy-init) ───────────────────────────────────────────────────
 let groqClient = null;
 
 function getGroq() {
@@ -13,23 +13,67 @@ function getGroq() {
   return groqClient;
 }
 
-// Primary model — llama-3.1-8b-instant is the free-tier workhorse on Groq (2026).
-// 14,400 RPD / 30 RPM / 500K TPD on the free plan.
-const MODEL = 'llama-3.1-8b-instant';
+// ── Model selection ───────────────────────────────────────────────────────────
+// Groq's available models depend on your account tier. Rather than hardcoding
+// a model that may not be available, we probe the /models endpoint once at
+// first use and pick the best available chat model automatically.
+//
+// Priority order (best to cheapest/fastest):
+const MODEL_PREFERENCE = [
+  'llama-3.3-70b-versatile',           // best quality, Enterprise
+  'llama-3.1-8b-instant',              // fast, Enterprise
+  'meta-llama/llama-4-scout-17b-16e-instruct', // free tier
+  'llama3-70b-8192',                   // older free tier id
+  'llama3-8b-8192',                    // older free tier id
+  'openai/gpt-oss-20b',               // free tier developer plan
+  'openai/gpt-oss-120b',              // free tier developer plan
+  'qwen/qwen3.8-27b',                 // free tier developer plan
+  'moonshotai/kimi-k2-instruct',       // free tier
+  'gemma2-9b-it',                      // older free tier
+  'mixtral-8x7b-32768',               // older free tier
+];
 
-// Fallback: larger model, higher quality but lower daily quota (1,000 RPD).
-// Used as a fallback string — not automatically switched in code,
-// but documented here for easy manual swap if the 8B model is degraded.
-const FALLBACK_MODEL = 'llama-3.3-70b-versatile'; // eslint-disable-line no-unused-vars
-
-// How long (ms) to wait for any single Groq API call before aborting.
-// Render free tier requests time out at ~30s; keep AI well under that.
-const GROQ_TIMEOUT_MS = 25000;
+let resolvedModel = null;   // cached after first discovery
 
 /**
- * Wraps a promise with a hard timeout so a slow Groq call can never
- * stall an Express response indefinitely.
+ * Discovers which model to use by querying /models with the actual API key.
+ * Result is cached so this only runs once per server lifetime.
  */
+async function resolveModel() {
+  if (resolvedModel) return resolvedModel;
+
+  try {
+    const groq = getGroq();
+    const { data: models } = await groq.models.list();
+    const availableIds = new Set(models.map(m => m.id));
+
+    for (const candidate of MODEL_PREFERENCE) {
+      if (availableIds.has(candidate)) {
+        resolvedModel = candidate;
+        console.log(`🤖 AI model selected: ${resolvedModel}`);
+        return resolvedModel;
+      }
+    }
+
+    // None of our preferences matched — use whatever the first chat model is
+    const firstChat = models.find(m => m.object === 'model' && !m.id.includes('whisper') && !m.id.includes('guard'));
+    if (firstChat) {
+      resolvedModel = firstChat.id;
+      console.log(`🤖 AI model fallback: ${resolvedModel}`);
+      return resolvedModel;
+    }
+
+    throw new Error('No usable chat model found on this Groq account');
+  } catch (err) {
+    // If discovery itself fails (network, bad key), surface a clear error
+    console.error('❌ Groq model discovery failed:', err.message);
+    throw new Error(classifyGroqError(err));
+  }
+}
+
+// ── Timeout ───────────────────────────────────────────────────────────────────
+const GROQ_TIMEOUT_MS = 25000;
+
 function withTimeout(promise, ms = GROQ_TIMEOUT_MS, label = 'AI request') {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
@@ -43,10 +87,7 @@ function withTimeout(promise, ms = GROQ_TIMEOUT_MS, label = 'AI request') {
   });
 }
 
-/**
- * Translates Groq SDK error objects into clean, user-facing messages.
- * Never exposes API keys, stack traces, or internal details.
- */
+// ── Error classification ──────────────────────────────────────────────────────
 function classifyGroqError(err) {
   const msg = (err.message || '').toLowerCase();
   const status = err.status || err.statusCode || 0;
@@ -75,18 +116,20 @@ function classifyGroqError(err) {
   if (msg.includes('fetch') || msg.includes('network') || msg.includes('econnreset') || msg.includes('enotfound')) {
     return 'Could not reach the AI service due to a network issue. Please try again.';
   }
-  // Generic fallback — never say "restart the server"
   return 'The AI service encountered an error. Please try again in a moment.';
 }
 
+// ── Core completions ──────────────────────────────────────────────────────────
+
 /**
- * Core chat completion for plain text responses (chat assistant).
+ * Plain-text chat completion.
  */
 async function chat(systemPrompt, userMessage, maxTokens = 800) {
-  const groq = getGroq();
+  const model = await resolveModel();
+  const groq  = getGroq();
   const completion = await withTimeout(
     groq.chat.completions.create({
-      model: MODEL,
+      model,
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user',   content: userMessage  },
@@ -101,19 +144,21 @@ async function chat(systemPrompt, userMessage, maxTokens = 800) {
 }
 
 /**
- * JSON-specific completion.
- * Groq does NOT support response_format: json_object — we instead instruct the
- * model via the system prompt and rely on parseJSON() to extract the JSON from
- * the response. This is the correct pattern for Groq's API.
+ * JSON completion — instructs the model via prompt (Groq doesn't support
+ * response_format: json_object across all models).
  */
 async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
-  const groq = getGroq();
+  const model = await resolveModel();
+  const groq  = getGroq();
   const completion = await withTimeout(
     groq.chat.completions.create({
-      model: MODEL,
+      model,
       messages: [
-        { role: 'system', content: systemPrompt + '\nYou MUST respond with valid JSON only. No explanation, no markdown fences, just raw JSON.' },
-        { role: 'user',   content: userMessage  },
+        {
+          role: 'system',
+          content: systemPrompt + '\nYou MUST respond with valid JSON only. No explanation, no markdown, no code fences — just the raw JSON object.',
+        },
+        { role: 'user', content: userMessage },
       ],
       temperature: 0.4,
       max_tokens:  maxTokens,
@@ -125,24 +170,18 @@ async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
 }
 
 /**
- * Parse JSON from AI response.
- * llama-3.1-8b-instant sometimes:
- *  - wraps output in ```json ... ``` fences
- *  - adds a brief preamble like "Here is the JSON:" before the object
- *  - emits trailing text after the closing brace
- * This function handles all of those cases defensively.
+ * Parses JSON from AI response.
+ * Handles markdown fences, preamble text, and trailing content.
  */
 function parseJSON(text) {
   if (!text) throw new SyntaxError('Empty response from AI');
 
-  // Strip markdown code fences (```json or ``` variants)
   let cleaned = text
     .replace(/```json\s*/gi, '')
     .replace(/```\s*/g, '')
     .trim();
 
-  // Try to extract the first complete JSON object or array
-  // (handles preamble text before the JSON and trailing text after it)
+  // Extract first complete JSON object or array, ignoring surrounding text
   const objMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
   if (objMatch) cleaned = objMatch[1];
 
@@ -164,8 +203,7 @@ You help with:
 - Feature brainstorming
 - Architecture decisions
 
-Keep responses concise, developer-friendly, and use markdown formatting where helpful.
-Use bullet points, code blocks, and headers to structure longer answers.`;
+Keep responses concise, developer-friendly, and use markdown formatting where helpful.`;
 
   try {
     return await chat(system, message, 1024);
@@ -182,7 +220,7 @@ async function generateHackathonIdea({ domain, techStack, teamSize, difficulty, 
 Domain: ${domain} | Tech: ${techStack} | Size: ${teamSize} | Difficulty: ${difficulty} | Theme: ${theme}
 Problem: ${problemArea}
 
-Return JSON:
+Return this exact JSON structure:
 {
   "projectName": "string",
   "tagline": "string",
@@ -211,7 +249,6 @@ Return JSON:
     const raw = await chatJSON(system, userMsg, 1000);
     return parseJSON(raw);
   } catch (err) {
-    // If it's a JSON parse error from a valid AI response, rethrow with context
     if (err instanceof SyntaxError) {
       throw new Error('The AI returned an unexpected response. Please try again.');
     }
@@ -220,14 +257,14 @@ Return JSON:
 }
 
 // ── Feature 3: Skill Gap Analyzer ────────────────────────────────────────────
-async function analyzeSkillGap({ currentSkills, targetRole, experienceLevel, careerPath }) {
+async function analyzeSkillGap({ currentSkills, targetRole, experienceLevel }) {
   const system = `You are a tech career coach. Analyze skill gaps and return JSON.`;
 
   const userMsg = `Skill gap analysis:
 Skills: ${currentSkills?.slice(0, 8).join(', ') || 'none'}
 Target: ${targetRole} | Level: ${experienceLevel}
 
-Return JSON:
+Return this exact JSON:
 {
   "targetRole": "${targetRole}",
   "overallReadiness": 45,
@@ -263,7 +300,6 @@ Return JSON:
 async function aiTeamRecommendations({ currentUser, candidates }) {
   const system = `You are a team formation AI. Analyze developer compatibility and return JSON.`;
 
-  // Cap at 5 to keep prompt small
   const top = candidates.slice(0, 5);
 
   const userMsg = `Rate compatibility between user and each candidate (0-100).
@@ -273,7 +309,7 @@ User: ${currentUser.name} | Skills: ${currentUser.skills?.slice(0, 5).join(', ')
 Candidates:
 ${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0, 5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
 
-Return JSON:
+Return this exact JSON:
 {
   "results": [
     { "candidateIndex": 0, "compatibilityScore": 85, "matchingSkills": ["skill1"], "complementarySkills": ["skill2"], "suggestedRole": "string", "whyGoodMatch": "one sentence" }
@@ -309,7 +345,7 @@ Return JSON:
 }
 
 // ── Feature 5: AI Team-Mode Recommendations ──────────────────────────────────
-async function aiTeamModeRecommendations({ teamName, requiredSkills, missingSkills, combinedMemberSkills, candidates, projectType }) {
+async function aiTeamModeRecommendations({ teamName, requiredSkills, missingSkills, combinedMemberSkills, candidates }) {
   const system = `You are a team formation AI. Find candidates who fill missing skill gaps and return JSON.`;
 
   const top = candidates.slice(0, 5);
@@ -320,7 +356,7 @@ Has: ${combinedMemberSkills.slice(0, 5).join(', ') || 'none'}
 Candidates:
 ${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0, 5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
 
-Return JSON:
+Return this exact JSON:
 {
   "results": [
     { "candidateIndex": 0, "compatibilityScore": 88, "skillsFulfilled": ["skill1"], "suggestedRole": "string", "whyGoodMatch": "one sentence", "teamImpact": "one sentence" }
@@ -355,7 +391,7 @@ Return JSON:
   }
 }
 
-// ── Feature 6: Extract project details from free-text description ─────────────
+// ── Feature 6: Extract project details ───────────────────────────────────────
 async function extractProjectDetails({ problemArea }) {
   const system = `You are a smart project details extractor for a hackathon platform.
 Extract structured project information from a natural language description.
@@ -364,25 +400,23 @@ If a field cannot be determined, use sensible defaults.`;
   const userMsg = `Extract project details from this description:
 "${problemArea}"
 
-Respond with this JSON:
+Return this exact JSON:
 {
-  "domain": "string (e.g. Healthcare, Education, Fintech, Productivity, E-commerce, Social Impact, Environment, Cybersecurity, AI/ML, Blockchain, Gaming, Travel, Food Tech, General)",
-  "techStack": ["tech1", "tech2", "tech3"],
-  "teamSize": "string (e.g. 3-4, 5-6, 1-2)",
-  "difficulty": "beginner",
-  "theme": "string (e.g. HealthTech, EdTech, FinTech, Open Innovation, AI-First, Climate Tech, Social Good, Smart Cities, Web3, Future of Work)"
+  "domain": "string (e.g. Healthcare, Education, Fintech, Productivity, General)",
+  "techStack": ["tech1", "tech2"],
+  "teamSize": "3-4",
+  "difficulty": "intermediate",
+  "theme": "string (e.g. HealthTech, EdTech, Open Innovation)"
 }
 
 Rules:
-- techStack: extract any technologies mentioned. If MERN mentioned, expand to ["React", "Node.js", "Express.js", "MongoDB"]
-- teamSize: convert "4 members" to "3-4", "team of 5" to "5-6"
-- difficulty must be one of: beginner, intermediate, advanced`;
+- difficulty must be one of: beginner, intermediate, advanced
+- teamSize format: "3-4", "5-6", "1-2"`;
 
   try {
     const raw = await chatJSON(system, userMsg, 400);
     return parseJSON(raw);
   } catch {
-    // Non-critical feature — return safe defaults instead of crashing
     return { domain: 'General', techStack: [], teamSize: '3-4', difficulty: 'intermediate', theme: 'Open Innovation' };
   }
 }
