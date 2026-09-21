@@ -13,81 +13,7 @@ function getGroq() {
   return groqClient;
 }
 
-// ── Model selection ───────────────────────────────────────────────────────────
-// Groq's available models depend on your account tier. Rather than hardcoding
-// a model that may not be available, we probe the /models endpoint once at
-// first use and pick the best available chat model automatically.
-//
-// Priority order (best to cheapest/fastest):
-const MODEL_PREFERENCE = [
-  'llama-3.3-70b-versatile',           // best quality, Enterprise
-  'llama-3.1-8b-instant',              // fast, Enterprise
-  'meta-llama/llama-4-scout-17b-16e-instruct', // free tier
-  'llama3-70b-8192',                   // older free tier id
-  'llama3-8b-8192',                    // older free tier id
-  'openai/gpt-oss-20b',               // free tier developer plan
-  'openai/gpt-oss-120b',              // free tier developer plan
-  'qwen/qwen3.8-27b',                 // free tier developer plan
-  'moonshotai/kimi-k2-instruct',       // free tier
-  'gemma2-9b-it',                      // older free tier
-  'mixtral-8x7b-32768',               // older free tier
-];
-
-let resolvedModel = null;   // cached after first discovery
-
-/**
- * Discovers which model to use by querying /models with the actual API key.
- * Result is cached so this only runs once per server lifetime.
- */
-async function resolveModel() {
-  if (resolvedModel) return resolvedModel;
-
-  try {
-    const groq = getGroq();
-    const { data: models } = await groq.models.list();
-    const availableIds = new Set(models.map(m => m.id));
-
-    for (const candidate of MODEL_PREFERENCE) {
-      if (availableIds.has(candidate)) {
-        resolvedModel = candidate;
-        console.log(`🤖 AI model selected: ${resolvedModel}`);
-        return resolvedModel;
-      }
-    }
-
-    // None of our preferences matched — use whatever the first chat model is
-    const firstChat = models.find(m => m.object === 'model' && !m.id.includes('whisper') && !m.id.includes('guard'));
-    if (firstChat) {
-      resolvedModel = firstChat.id;
-      console.log(`🤖 AI model fallback: ${resolvedModel}`);
-      return resolvedModel;
-    }
-
-    throw new Error('No usable chat model found on this Groq account');
-  } catch (err) {
-    // If discovery itself fails (network, bad key), surface a clear error
-    console.error('❌ Groq model discovery failed:', err.message);
-    throw new Error(classifyGroqError(err));
-  }
-}
-
-// ── Timeout ───────────────────────────────────────────────────────────────────
-const GROQ_TIMEOUT_MS = 25000;
-
-function withTimeout(promise, ms = GROQ_TIMEOUT_MS, label = 'AI request') {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(
-      () => reject(new Error(`${label} timed out after ${ms / 1000}s. The AI service may be busy — please try again.`)),
-      ms
-    );
-    promise.then(
-      (val) => { clearTimeout(timer); resolve(val); },
-      (err) => { clearTimeout(timer); reject(err); }
-    );
-  });
-}
-
-// ── Error classification ──────────────────────────────────────────────────────
+// ── Error classifier (defined first — used by resolveModel) ──────────────────
 function classifyGroqError(err) {
   const msg = (err.message || '').toLowerCase();
   const status = err.status || err.statusCode || 0;
@@ -119,11 +45,101 @@ function classifyGroqError(err) {
   return 'The AI service encountered an error. Please try again in a moment.';
 }
 
+// ── Model selection ───────────────────────────────────────────────────────────
+// Confirmed available on the current Groq free account (verified 2026):
+//   openai/gpt-oss-20b, openai/gpt-oss-120b, qwen/qwen3.8-27b
+// Llama models (llama-3.1-8b-instant etc.) are Enterprise-only on this account.
+// We probe /models at first use and pick the best available model automatically.
+const MODEL_PREFERENCE = [
+  'openai/gpt-oss-20b',                         // fast reasoning, 1K RPM — primary
+  'openai/gpt-oss-120b',                        // larger — fallback
+  'qwen/qwen3.8-27b',                           // Qwen — second fallback
+  'meta-llama/llama-4-scout-17b-16e-instruct',  // if available
+  'llama-3.3-70b-versatile',                    // Enterprise accounts
+  'llama-3.1-8b-instant',                       // Enterprise accounts
+  'llama3-70b-8192',                            // legacy id
+  'llama3-8b-8192',                             // legacy id
+  'moonshotai/kimi-k2-instruct',
+  'gemma2-9b-it',
+];
+
+let resolvedModel = null; // cached after first discovery
+
+async function resolveModel() {
+  if (resolvedModel) return resolvedModel;
+
+  try {
+    const groq = getGroq();
+    const { data: models } = await groq.models.list();
+    const availableIds = new Set(models.map(m => m.id));
+    console.log('🔍 Groq models available:', [...availableIds].join(', '));
+
+    for (const candidate of MODEL_PREFERENCE) {
+      if (availableIds.has(candidate)) {
+        resolvedModel = candidate;
+        console.log(`🤖 AI model selected: ${resolvedModel}`);
+        return resolvedModel;
+      }
+    }
+
+    // None of our preferences — use first non-audio, non-guard model
+    const firstChat = models.find(m =>
+      !m.id.includes('whisper') &&
+      !m.id.includes('guard') &&
+      !m.id.includes('orpheus')
+    );
+    if (firstChat) {
+      resolvedModel = firstChat.id;
+      console.log(`🤖 AI model fallback: ${resolvedModel}`);
+      return resolvedModel;
+    }
+
+    throw new Error('No usable chat model found on this Groq account');
+  } catch (err) {
+    console.error('❌ Groq model discovery failed:', err.message);
+    throw new Error(classifyGroqError(err));
+  }
+}
+
+// ── Timeout ───────────────────────────────────────────────────────────────────
+const GROQ_TIMEOUT_MS = 25000;
+
+function withTimeout(promise, ms = GROQ_TIMEOUT_MS, label = 'AI request') {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(
+      () => reject(new Error(`${label} timed out after ${ms / 1000}s. The AI service may be busy — please try again.`)),
+      ms
+    );
+    promise.then(
+      (val) => { clearTimeout(timer); resolve(val); },
+      (err) => { clearTimeout(timer); reject(err); }
+    );
+  });
+}
+
+// ── JSON parser ───────────────────────────────────────────────────────────────
+// openai/gpt-oss-20b is a reasoning model — it emits <think>...</think> blocks
+// before the actual response. We strip those plus any markdown fences.
+function parseJSON(text) {
+  if (!text) throw new SyntaxError('Empty response from AI');
+
+  let cleaned = text
+    // Strip reasoning/thinking blocks (gpt-oss-20b, Qwen3 reasoning mode)
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    // Strip markdown code fences
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
+
+  // Extract first complete JSON object or array, ignoring surrounding text
+  const objMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
+  if (objMatch) cleaned = objMatch[1];
+
+  return JSON.parse(cleaned);
+}
+
 // ── Core completions ──────────────────────────────────────────────────────────
 
-/**
- * Plain-text chat completion.
- */
 async function chat(systemPrompt, userMessage, maxTokens = 800) {
   const model = await resolveModel();
   const groq  = getGroq();
@@ -143,10 +159,7 @@ async function chat(systemPrompt, userMessage, maxTokens = 800) {
   return completion.choices[0]?.message?.content?.trim() || '';
 }
 
-/**
- * JSON completion — instructs the model via prompt (Groq doesn't support
- * response_format: json_object across all models).
- */
+// JSON completion — instructs via prompt (Groq doesn't support response_format across all models)
 async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
   const model = await resolveModel();
   const groq  = getGroq();
@@ -156,7 +169,7 @@ async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
       messages: [
         {
           role: 'system',
-          content: systemPrompt + '\nYou MUST respond with valid JSON only. No explanation, no markdown, no code fences — just the raw JSON object.',
+          content: systemPrompt + '\nIMPORTANT: Respond with valid JSON only. No explanation, no markdown fences, no <think> blocks — output the raw JSON object and nothing else.',
         },
         { role: 'user', content: userMessage },
       ],
@@ -169,41 +182,14 @@ async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
   return completion.choices[0]?.message?.content?.trim() || '';
 }
 
-/**
- * Parses JSON from AI response.
- * Handles markdown fences, preamble text, and trailing content.
- */
-function parseJSON(text) {
-  if (!text) throw new SyntaxError('Empty response from AI');
-
-  let cleaned = text
-    .replace(/```json\s*/gi, '')
-    .replace(/```\s*/g, '')
-    .trim();
-
-  // Extract first complete JSON object or array, ignoring surrounding text
-  const objMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
-  if (objMatch) cleaned = objMatch[1];
-
-  return JSON.parse(cleaned);
-}
-
 // ── Feature 1: Team Chat AI Assistant ────────────────────────────────────────
 async function teamChatAssistant({ message, teamName, teamSkills, projectDescription }) {
   const system = `You are an AI assistant embedded inside a team collaboration platform called TeamForge.
 You are helping the team "${teamName}".
 Team skills: ${teamSkills?.join(', ') || 'not specified'}.
 Project context: ${projectDescription || 'general development project'}.
-
-You help with:
-- Coding questions and debugging
-- Project planning and roadmaps
-- Tech stack suggestions
-- Hackathon ideas and strategies
-- Feature brainstorming
-- Architecture decisions
-
-Keep responses concise, developer-friendly, and use markdown formatting where helpful.`;
+Help with coding, planning, tech stack suggestions, hackathon ideas, and architecture.
+Keep responses concise and developer-friendly. Use markdown where helpful.`;
 
   try {
     return await chat(system, message, 1024);
@@ -214,107 +200,58 @@ Keep responses concise, developer-friendly, and use markdown formatting where he
 
 // ── Feature 2: Hackathon Idea Generator ──────────────────────────────────────
 async function generateHackathonIdea({ domain, techStack, teamSize, difficulty, theme, problemArea }) {
-  const system = `You are a hackathon mentor. Generate creative project ideas and return JSON.`;
+  const system = `You are a hackathon mentor. Generate a creative project idea and return ONLY a JSON object.`;
 
-  const userMsg = `Generate a hackathon idea:
-Domain: ${domain} | Tech: ${techStack} | Size: ${teamSize} | Difficulty: ${difficulty} | Theme: ${theme}
+  const userMsg = `Generate a hackathon idea for:
+Domain: ${domain} | Tech: ${techStack} | Team: ${teamSize} | Difficulty: ${difficulty} | Theme: ${theme}
 Problem: ${problemArea}
 
-Return this exact JSON structure:
-{
-  "projectName": "string",
-  "tagline": "string",
-  "problemStatement": "string",
-  "solution": "string",
-  "coreFeatures": ["f1","f2","f3","f4","f5"],
-  "techStack": ["t1","t2","t3"],
-  "uniqueSellingPoint": "string",
-  "monetizationIdea": "string",
-  "futureScope": "string",
-  "implementationRoadmap": [
-    {"phase":"Phase 1","duration":"Day 1","tasks":["t1","t2"]},
-    {"phase":"Phase 2","duration":"Day 2","tasks":["t1","t2"]},
-    {"phase":"Phase 3","duration":"Day 3","tasks":["t1","t2"]}
-  ],
-  "teamRoles": [
-    {"role":"Frontend Developer","responsibilities":"string"},
-    {"role":"Backend Developer","responsibilities":"string"},
-    {"role":"UI/UX Designer","responsibilities":"string"}
-  ],
-  "estimatedImpact": "string",
-  "difficulty": "${difficulty}"
-}`;
+Output this JSON object (no other text):
+{"projectName":"","tagline":"","problemStatement":"","solution":"","coreFeatures":["","","","",""],"techStack":["","",""],"uniqueSellingPoint":"","monetizationIdea":"","futureScope":"","implementationRoadmap":[{"phase":"Phase 1","duration":"Day 1","tasks":["",""]},{"phase":"Phase 2","duration":"Day 2","tasks":["",""]},{"phase":"Phase 3","duration":"Day 3","tasks":["",""]}],"teamRoles":[{"role":"Frontend Developer","responsibilities":""},{"role":"Backend Developer","responsibilities":""},{"role":"UI/UX Designer","responsibilities":""}],"estimatedImpact":"","difficulty":"${difficulty}"}`;
 
   try {
     const raw = await chatJSON(system, userMsg, 1000);
     return parseJSON(raw);
   } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error('The AI returned an unexpected response. Please try again.');
-    }
+    if (err instanceof SyntaxError) throw new Error('The AI returned an unexpected response. Please try again.');
     throw new Error(classifyGroqError(err));
   }
 }
 
 // ── Feature 3: Skill Gap Analyzer ────────────────────────────────────────────
 async function analyzeSkillGap({ currentSkills, targetRole, experienceLevel }) {
-  const system = `You are a tech career coach. Analyze skill gaps and return JSON.`;
+  const system = `You are a tech career coach. Analyze skill gaps and return ONLY a JSON object.`;
 
-  const userMsg = `Skill gap analysis:
-Skills: ${currentSkills?.slice(0, 8).join(', ') || 'none'}
-Target: ${targetRole} | Level: ${experienceLevel}
+  const userMsg = `Skill gap analysis for:
+Skills: ${currentSkills?.slice(0, 8).join(', ') || 'none'} | Target: ${targetRole} | Level: ${experienceLevel}
 
-Return this exact JSON:
-{
-  "targetRole": "${targetRole}",
-  "overallReadiness": 45,
-  "currentStrengths": ["s1","s2","s3"],
-  "missingSkills": [{"skill":"string","priority":"high","reason":"string"}],
-  "learningRoadmap": [
-    {"week":"Week 1-2","focus":"string","resources":["r1","r2"],"goal":"string"},
-    {"week":"Week 3-4","focus":"string","resources":["r1","r2"],"goal":"string"},
-    {"week":"Week 5-8","focus":"string","resources":["r1","r2"],"goal":"string"},
-    {"week":"Week 9-12","focus":"string","resources":["r1","r2"],"goal":"string"}
-  ],
-  "recommendedProjects": [{"name":"string","description":"string","skills":["s1","s2"]}],
-  "interviewTopics": ["t1","t2","t3","t4","t5"],
-  "certifications": [{"name":"string","provider":"string","priority":"high"}],
-  "prioritySkills": ["s1","s2","s3"],
-  "timelineToJobReady": "string",
-  "salaryRange": "string",
-  "jobMarketDemand": "high"
-}`;
+Output this JSON object (no other text):
+{"targetRole":"${targetRole}","overallReadiness":45,"currentStrengths":["","",""],"missingSkills":[{"skill":"","priority":"high","reason":""}],"learningRoadmap":[{"week":"Week 1-2","focus":"","resources":["",""],"goal":""},{"week":"Week 3-4","focus":"","resources":["",""],"goal":""},{"week":"Week 5-8","focus":"","resources":["",""],"goal":""},{"week":"Week 9-12","focus":"","resources":["",""],"goal":""}],"recommendedProjects":[{"name":"","description":"","skills":["",""]}],"interviewTopics":["","","","",""],"certifications":[{"name":"","provider":"","priority":"high"}],"prioritySkills":["","",""],"timelineToJobReady":"","salaryRange":"","jobMarketDemand":"high"}`;
 
   try {
     const raw = await chatJSON(system, userMsg, 1000);
     return parseJSON(raw);
   } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error('The AI returned an unexpected response. Please try again.');
-    }
+    if (err instanceof SyntaxError) throw new Error('The AI returned an unexpected response. Please try again.');
     throw new Error(classifyGroqError(err));
   }
 }
 
 // ── Feature 4: AI Team Recommendations ───────────────────────────────────────
 async function aiTeamRecommendations({ currentUser, candidates }) {
-  const system = `You are a team formation AI. Analyze developer compatibility and return JSON.`;
+  const system = `You are a team formation AI. Rate developer compatibility and return ONLY a JSON object.`;
 
   const top = candidates.slice(0, 5);
 
-  const userMsg = `Rate compatibility between user and each candidate (0-100).
+  const userMsg = `Rate compatibility (0-100) between user and each candidate.
 
 User: ${currentUser.name} | Skills: ${currentUser.skills?.slice(0, 5).join(', ') || 'none'} | Exp: ${currentUser.experienceLevel}
 
 Candidates:
 ${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0, 5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
 
-Return this exact JSON:
-{
-  "results": [
-    { "candidateIndex": 0, "compatibilityScore": 85, "matchingSkills": ["skill1"], "complementarySkills": ["skill2"], "suggestedRole": "string", "whyGoodMatch": "one sentence" }
-  ]
-}`;
+Output this JSON object (no other text):
+{"results":[{"candidateIndex":0,"compatibilityScore":85,"matchingSkills":[""],"complementarySkills":[""],"suggestedRole":"","whyGoodMatch":""}]}`;
 
   try {
     const raw = await chatJSON(system, userMsg, 800);
@@ -337,16 +274,14 @@ Return this exact JSON:
       };
     }).sort((a, b) => b.compatibility.score - a.compatibility.score);
   } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error('The AI returned an unexpected response. Please try again.');
-    }
+    if (err instanceof SyntaxError) throw new Error('The AI returned an unexpected response. Please try again.');
     throw new Error(classifyGroqError(err));
   }
 }
 
 // ── Feature 5: AI Team-Mode Recommendations ──────────────────────────────────
 async function aiTeamModeRecommendations({ teamName, requiredSkills, missingSkills, combinedMemberSkills, candidates }) {
-  const system = `You are a team formation AI. Find candidates who fill missing skill gaps and return JSON.`;
+  const system = `You are a team formation AI. Find candidates filling skill gaps and return ONLY a JSON object.`;
 
   const top = candidates.slice(0, 5);
 
@@ -356,12 +291,8 @@ Has: ${combinedMemberSkills.slice(0, 5).join(', ') || 'none'}
 Candidates:
 ${top.map((c, i) => `${i}. ${c.name} | Skills: ${c.skills?.slice(0, 5).join(', ') || 'none'} | Exp: ${c.experienceLevel}`).join('\n')}
 
-Return this exact JSON:
-{
-  "results": [
-    { "candidateIndex": 0, "compatibilityScore": 88, "skillsFulfilled": ["skill1"], "suggestedRole": "string", "whyGoodMatch": "one sentence", "teamImpact": "one sentence" }
-  ]
-}`;
+Output this JSON object (no other text):
+{"results":[{"candidateIndex":0,"compatibilityScore":88,"skillsFulfilled":[""],"suggestedRole":"","whyGoodMatch":"","teamImpact":""}]}`;
 
   try {
     const raw = await chatJSON(system, userMsg, 800);
@@ -384,37 +315,24 @@ Return this exact JSON:
       };
     }).sort((a, b) => b.compatibility.score - a.compatibility.score);
   } catch (err) {
-    if (err instanceof SyntaxError) {
-      throw new Error('The AI returned an unexpected response. Please try again.');
-    }
+    if (err instanceof SyntaxError) throw new Error('The AI returned an unexpected response. Please try again.');
     throw new Error(classifyGroqError(err));
   }
 }
 
 // ── Feature 6: Extract project details ───────────────────────────────────────
 async function extractProjectDetails({ problemArea }) {
-  const system = `You are a smart project details extractor for a hackathon platform.
-Extract structured project information from a natural language description.
-If a field cannot be determined, use sensible defaults.`;
+  const system = `Extract project details from a description and return ONLY a JSON object.`;
 
-  const userMsg = `Extract project details from this description:
-"${problemArea}"
+  const userMsg = `Extract details from: "${problemArea}"
 
-Return this exact JSON:
-{
-  "domain": "string (e.g. Healthcare, Education, Fintech, Productivity, General)",
-  "techStack": ["tech1", "tech2"],
-  "teamSize": "3-4",
-  "difficulty": "intermediate",
-  "theme": "string (e.g. HealthTech, EdTech, Open Innovation)"
-}
+Output this JSON (no other text):
+{"domain":"General","techStack":[],"teamSize":"3-4","difficulty":"intermediate","theme":"Open Innovation"}
 
-Rules:
-- difficulty must be one of: beginner, intermediate, advanced
-- teamSize format: "3-4", "5-6", "1-2"`;
+Rules: difficulty = beginner|intermediate|advanced, teamSize format = "3-4"`;
 
   try {
-    const raw = await chatJSON(system, userMsg, 400);
+    const raw = await chatJSON(system, userMsg, 300);
     return parseJSON(raw);
   } catch {
     return { domain: 'General', techStack: [], teamSize: '3-4', difficulty: 'intermediate', theme: 'Open Innovation' };
