@@ -13,11 +13,14 @@ function getGroq() {
   return groqClient;
 }
 
-// Primary model — confirmed available on Groq free tier
-const MODEL = 'llama3-8b-8192';
+// Primary model — llama-3.1-8b-instant is the free-tier workhorse on Groq (2026).
+// 14,400 RPD / 30 RPM / 500K TPD on the free plan.
+const MODEL = 'llama-3.1-8b-instant';
 
-// Fallback model if primary is unavailable or rate-limited
-const FALLBACK_MODEL = 'llama3-groq-8b-8192-tool-use-preview';
+// Fallback: larger model, higher quality but lower daily quota (1,000 RPD).
+// Used as a fallback string — not automatically switched in code,
+// but documented here for easy manual swap if the 8B model is degraded.
+const FALLBACK_MODEL = 'llama-3.3-70b-versatile'; // eslint-disable-line no-unused-vars
 
 // How long (ms) to wait for any single Groq API call before aborting.
 // Render free tier requests time out at ~30s; keep AI well under that.
@@ -98,21 +101,22 @@ async function chat(systemPrompt, userMessage, maxTokens = 800) {
 }
 
 /**
- * JSON-specific completion — forces response_format: json_object.
- * Use this for all features that need parseable JSON back.
+ * JSON-specific completion.
+ * Groq does NOT support response_format: json_object — we instead instruct the
+ * model via the system prompt and rely on parseJSON() to extract the JSON from
+ * the response. This is the correct pattern for Groq's API.
  */
-async function chatJSON(systemPrompt, userMessage, maxTokens = 1000, model = MODEL) {
+async function chatJSON(systemPrompt, userMessage, maxTokens = 1000) {
   const groq = getGroq();
   const completion = await withTimeout(
     groq.chat.completions.create({
-      model,
+      model: MODEL,
       messages: [
-        { role: 'system', content: systemPrompt + '\nRespond with valid JSON only.' },
+        { role: 'system', content: systemPrompt + '\nYou MUST respond with valid JSON only. No explanation, no markdown fences, just raw JSON.' },
         { role: 'user',   content: userMessage  },
       ],
-      temperature: 0.6,
+      temperature: 0.4,
       max_tokens:  maxTokens,
-      response_format: { type: 'json_object' },
     }),
     GROQ_TIMEOUT_MS,
     'AI JSON request'
@@ -121,14 +125,27 @@ async function chatJSON(systemPrompt, userMessage, maxTokens = 1000, model = MOD
 }
 
 /**
- * Parse JSON from AI response — strips markdown fences if present.
+ * Parse JSON from AI response.
+ * llama-3.1-8b-instant sometimes:
+ *  - wraps output in ```json ... ``` fences
+ *  - adds a brief preamble like "Here is the JSON:" before the object
+ *  - emits trailing text after the closing brace
+ * This function handles all of those cases defensively.
  */
 function parseJSON(text) {
-  // Strip markdown fences
-  let cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-  // Extract the first valid JSON object or array
+  if (!text) throw new SyntaxError('Empty response from AI');
+
+  // Strip markdown code fences (```json or ``` variants)
+  let cleaned = text
+    .replace(/```json\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim();
+
+  // Try to extract the first complete JSON object or array
+  // (handles preamble text before the JSON and trailing text after it)
   const objMatch = cleaned.match(/(\{[\s\S]*\}|\[[\s\S]*\])/);
   if (objMatch) cleaned = objMatch[1];
+
   return JSON.parse(cleaned);
 }
 
