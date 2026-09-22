@@ -374,6 +374,12 @@ mongoose.connection.on('error', (err) => {
 
 connectDB();
 
+// ── AI provider startup log ───────────────────────────────────────────────────
+const hasGemini = !!process.env.GEMINI_API_KEY;
+const hasGroq   = !!process.env.GROQ_API_KEY;
+console.log(`🤖 AI providers: ${hasGemini ? '✅ Gemini (primary)' : '❌ Gemini (no key)'} | ${hasGroq ? '✅ Groq (fallback)' : '❌ Groq (no key)'}`);
+if (!hasGemini && !hasGroq) console.warn('⚠️  No AI provider configured — AI features will fail');
+
 // ── Start server ──────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
