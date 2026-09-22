@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Plus, Users, Search, Filter, ArrowRight, Crown } from 'lucide-react'
@@ -31,20 +31,33 @@ export default function TeamsPage() {
   const [creating, setCreating]   = useState(false)
   const [newTeam, setNewTeam]     = useState({ name: '', description: '', projectType: 'web-development', maxMembers: 5, requiredSkills: [], tags: [] })
 
-  const load = async () => {
+  const load = async (searchVal, filterVal) => {
     setLoading(true)
     try {
-      const [all, my] = await Promise.all([
-        teamAPI.getAll({ search, ...filter }),
-        teamAPI.getMy()
-      ])
+      // Only re-fetch "my teams" when the component first mounts, not on every search change.
+      // Use functional setState ref trick to read current myTeams state.
+      const all = await teamAPI.getAll({ search: searchVal, ...filterVal })
       setTeams(all.data.teams || [])
-      setMyTeams(my.data.teams || [])
     } catch { toast.error('Failed to load teams') }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [search, filter.projectType, filter.status])
+  // Fetch "my teams" once on mount only — they don't change based on search/filter
+  useEffect(() => {
+    teamAPI.getMy()
+      .then(r => setMyTeams(r.data.teams || []))
+      .catch(() => {})
+  }, [])
+
+  // Debounced search + filter — wait 350ms after the user stops typing before fetching
+  const debounceRef = useRef(null)
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      load(search, filter)
+    }, search ? 350 : 0) // no debounce on filter-only changes
+    return () => clearTimeout(debounceRef.current)
+  }, [search, filter.projectType, filter.status])
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -55,7 +68,10 @@ export default function TeamsPage() {
       toast.success('Team created!')
       setShowCreate(false)
       setNewTeam({ name: '', description: '', projectType: 'web-development', maxMembers: 5, requiredSkills: [], tags: [] })
-      load()
+      // Refresh both lists after creation
+      const [all, my] = await Promise.all([teamAPI.getAll({ search, ...filter }), teamAPI.getMy()])
+      setTeams(all.data.teams || [])
+      setMyTeams(my.data.teams || [])
     } catch (err) { toast.error(err.response?.data?.message || 'Failed to create team') }
     finally { setCreating(false) }
   }

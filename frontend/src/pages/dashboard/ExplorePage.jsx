@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { Search, Users, Github, Linkedin, Mail, ExternalLink } from 'lucide-react'
@@ -40,7 +40,14 @@ export default function ExplorePage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { setPage(1); load(1) }, [search, filter.experience, filter.availability])
+  // Debounced search + filter — prevents API call on every keystroke
+  const debounceRef = useRef(null)
+  useEffect(() => {
+    setPage(1)
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => { load(1) }, search ? 350 : 0)
+    return () => clearTimeout(debounceRef.current)
+  }, [search, filter.experience, filter.availability])
 
   useEffect(() => {
     teamAPI.getMy().then(r => setMyTeams(r.data.teams?.filter(t => t.leader?._id === user?._id) || []))

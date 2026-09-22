@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Plus, Search, FolderKanban, Calendar, Users, Zap } from 'lucide-react'
@@ -35,20 +35,31 @@ export default function ProjectsPage() {
     deadline: '', isHackathon: false, tags: []
   })
 
-  const load = async () => {
+  const load = async (searchVal, filterVal) => {
     setLoading(true)
     try {
-      const [all, my] = await Promise.all([
-        projectAPI.getAll({ search, ...filter }),
-        projectAPI.getMy()
-      ])
+      const all = await projectAPI.getAll({ search: searchVal, ...filterVal })
       setProjects(all.data.projects || [])
-      setMyProjects(my.data.projects || [])
     } catch { toast.error('Failed to load projects') }
     finally { setLoading(false) }
   }
 
-  useEffect(() => { load() }, [search, filter.category, filter.difficulty])
+  // Fetch "my projects" once on mount — not dependent on search/filter
+  useEffect(() => {
+    projectAPI.getMy()
+      .then(r => setMyProjects(r.data.projects || []))
+      .catch(() => {})
+  }, [])
+
+  // Debounced search + filter
+  const debounceRef = useRef(null)
+  useEffect(() => {
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      load(search, filter)
+    }, search ? 350 : 0)
+    return () => clearTimeout(debounceRef.current)
+  }, [search, filter.category, filter.difficulty])
 
   const handleCreate = async (e) => {
     e.preventDefault()
@@ -59,7 +70,10 @@ export default function ProjectsPage() {
       toast.success('Project posted!')
       setShowCreate(false)
       setForm({ title:'',description:'',category:'web-development',difficulty:'intermediate',maxTeamSize:5,requiredSkills:[],deadline:'',isHackathon:false,tags:[] })
-      load()
+      // Refresh both lists after creation
+      const [all, my] = await Promise.all([projectAPI.getAll({ search, ...filter }), projectAPI.getMy()])
+      setProjects(all.data.projects || [])
+      setMyProjects(my.data.projects || [])
     } catch (err) { toast.error(err.response?.data?.message || 'Failed') }
     finally { setCreating(false) }
   }

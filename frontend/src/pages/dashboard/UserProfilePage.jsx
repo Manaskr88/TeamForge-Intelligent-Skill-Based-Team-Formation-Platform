@@ -36,20 +36,16 @@ export default function UserProfilePage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [profileRes, teamsRes] = await Promise.all([
+        // Run all three fetches in parallel — compatibility was previously serial (extra latency)
+        const requests = [
           profileAPI.getPublic(userId),
           teamAPI.getMy(),
-        ])
+          !isOwnProfile ? recommendationAPI.getCompatibility(userId).catch(() => null) : Promise.resolve(null),
+        ]
+        const [profileRes, teamsRes, compRes] = await Promise.all(requests)
         setProfile(profileRes.data.user)
         setMyTeams(teamsRes.data.teams?.filter(t => t.leader?._id === me?._id) || [])
-
-        // Get compatibility score if not own profile
-        if (!isOwnProfile) {
-          try {
-            const compRes = await recommendationAPI.getCompatibility(userId)
-            setCompatibility(compRes.data.compatibility)
-          } catch {}
-        }
+        if (compRes) setCompatibility(compRes.data?.compatibility)
       } catch {
         toast.error('User not found')
         navigate(-1)
